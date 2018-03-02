@@ -2,7 +2,7 @@
 #ifndef CAMERA_H_
 #define CAMERA_H_
 #include <string>
-#include "Image_plane"
+#include "Image_plane.h"
 #include "Vector3.h"
 class Camera {
  public:
@@ -24,7 +24,7 @@ class Camera {
   Vector3 v;  // up vector
   Vector3 w;  // forward vector
   Vector3 e;  // position
-  Image_plane image_plane;
   const std::string file_name;
+  Image_plane image_plane;
 };
 #endif
