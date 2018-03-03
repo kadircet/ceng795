@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include <sstream>
 #include <string>
 #include "tinyxml2.h"
 Scene::Scene(const std::string& file_name) {
@@ -83,4 +84,56 @@ Scene::Scene(const std::string& file_name) {
   auto child = element->FirstChildElement("AmbientLight");
   stream << child->GetText() << std::endl;
   stream >> ambient_light.x >> ambient_light.y >> ambient_light.z;
+  element = element->FirstChildElement("PointLight");
+  Point_light point_light;
+  while (element) {
+    child = element->FirstChildElement("Position");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("Intensity");
+    stream << child->GetText() << std::endl;
+
+    stream >> point_light.position.x >> point_light.position.y >>
+        point_light.position.z;
+    stream >> point_light.intensity.x >> point_light.intensity.y >>
+        point_light.intensity.z;
+
+    point_lights.push_back(point_light);
+    element = element->NextSiblingElement("PointLight");
+  }
+
+  // Get Materials
+  element = root->FirstChildElement("Materials");
+  element = element->FirstChildElement("Material");
+  Material material;
+  while (element) {
+    child = element->FirstChildElement("AmbientReflectance");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("DiffuseReflectance");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("SpecularReflectance");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("MirrorReflectance");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("PhongExponent");
+    stream << child->GetText() << std::endl;
+
+    stream >> material.ambient.x >> material.ambient.y >> material.ambient.z;
+    stream >> material.diffuse.x >> material.diffuse.y >> material.diffuse.z;
+    stream >> material.specular.x >> material.specular.y >> material.specular.z;
+    stream >> material.mirror.x >> material.mirror.y >> material.mirror.z;
+    stream >> material.phong_exponent;
+
+    materials.push_back(material);
+    element = element->NextSiblingElement("Material");
+  }
+
+  // Get VertexData
+  element = root->FirstChildElement("VertexData");
+  stream << element->GetText() << std::endl;
+  Vector3 vertex;
+  while (!(stream >> vertex.x).eof()) {
+    stream >> vertex.y >> vertex.z;
+    vertex_data.push_back(vertex);
+  }
+  stream.clear();
 }

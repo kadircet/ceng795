@@ -3,7 +3,6 @@
 #define VECTOR3I_H_
 #include <cmath>
 #include <iostream>
-constexpr const float kEpsilon = 1e-6;
 class Vector3i {
  public:
   float x, y, z;

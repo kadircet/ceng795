@@ -4,7 +4,10 @@
 #include <string>
 #include <vector>
 #include "Camera.h"
+#include "Material.h"
+#include "Point_light.h"
 #include "Vector3i.cpp"
+
 class Scene {
  public:
   Vector3i background_color;
@@ -13,6 +16,9 @@ class Scene {
   Vector3 ambient_light;
 
   std::vector<Camera> cameras;
+  std::vector<Point_light> point_lights;
+  std::vector<Material> materials;
+  std::vector<Vector3> vertex_data;
   Scene(const std::string& file_name);
 };
 #endif
