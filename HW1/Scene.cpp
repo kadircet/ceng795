@@ -136,4 +136,78 @@ Scene::Scene(const std::string& file_name) {
     vertex_data.push_back(vertex);
   }
   stream.clear();
+
+  // Get Meshes
+  element = root->FirstChildElement("Objects");
+  element = element->FirstChildElement("Mesh");
+  Mesh mesh;
+  while (element) {
+    child = element->FirstChildElement("Material");
+    stream << child->GetText() << std::endl;
+    stream >> mesh.material_id;
+    mesh.material_id--;
+
+    child = element->FirstChildElement("Faces");
+    stream << child->GetText() << std::endl;
+    int v0_id, v1_id, v2_id;
+    while (!(stream >> v0_id).eof()) {
+      stream >> v1_id >> v2_id;
+      const Vector3& v_0 = vertex_data[v0_id - 1];
+      const Vector3& v_1 = vertex_data[v1_id - 1];
+      const Vector3& v_2 = vertex_data[v2_id - 1];
+      mesh.triangles.push_back(Triangle(v_0, v_1, v_2, mesh.material_id));
+    }
+    stream.clear();
+
+    meshes.push_back(std::move(mesh));
+    mesh.triangles.clear();
+    element = element->NextSiblingElement("Mesh");
+  }
+  stream.clear();
+
+  // Get Triangles
+  element = root->FirstChildElement("Objects");
+  element = element->FirstChildElement("Triangle");
+  while (element) {
+    int material_id;
+    child = element->FirstChildElement("Material");
+    stream << child->GetText() << std::endl;
+    stream >> material_id;
+    material_id--;
+
+    child = element->FirstChildElement("Indices");
+    stream << child->GetText() << std::endl;
+    int v0_id, v1_id, v2_id;
+    stream >> v0_id >> v1_id >> v2_id;
+    const Vector3& v_0 = vertex_data[v0_id - 1];
+    const Vector3& v_1 = vertex_data[v1_id - 1];
+    const Vector3& v_2 = vertex_data[v2_id - 1];
+    triangles.push_back(Triangle(v_0, v_1, v_2, material_id));
+    element = element->NextSiblingElement("Triangle");
+  }
+
+  // Get Spheres
+  element = root->FirstChildElement("Objects");
+  element = element->FirstChildElement("Sphere");
+  while (element) {
+    int material_id;
+    child = element->FirstChildElement("Material");
+    stream << child->GetText() << std::endl;
+    stream >> material_id;
+    material_id--;
+
+    child = element->FirstChildElement("Center");
+    stream << child->GetText() << std::endl;
+    int center;
+    stream >> center;
+    const Vector3& center_of_sphere = vertex_data[center - 1];
+
+    float radius;
+    child = element->FirstChildElement("Radius");
+    stream << child->GetText() << std::endl;
+    stream >> radius;
+
+    spheres.push_back(Sphere(center_of_sphere, radius, material_id));
+    element = element->NextSiblingElement("Sphere");
+  }
 }

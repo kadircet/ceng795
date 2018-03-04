@@ -10,9 +10,10 @@ class Triangle : public Shape {
  public:
   Vector3 v_0, v_1, v_2;
   Vector3 normal;
+  int material_id;
   Triangle(const Vector3& vertex_0, const Vector3& vertex_1,
-           const Vector3& vertex_2)
-      : v_0(vertex_0), v_1(vertex_1), v_2(vertex_2) {
+           const Vector3& vertex_2, int material_id)
+      : v_0(vertex_0), v_1(vertex_1), v_2(vertex_2), material_id(material_id) {
     normal = (v_1 - v_0).cross(v_2 - v_0).normalize();
   }
   Hit_data intersect(const Ray& ray) override {

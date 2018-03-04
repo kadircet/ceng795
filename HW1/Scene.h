@@ -5,7 +5,9 @@
 #include <vector>
 #include "Camera.h"
 #include "Material.h"
+#include "Mesh.h"
 #include "Point_light.h"
+#include "Sphere.h"
 #include "Vector3i.cpp"
 
 class Scene {
@@ -19,6 +21,10 @@ class Scene {
   std::vector<Point_light> point_lights;
   std::vector<Material> materials;
   std::vector<Vector3> vertex_data;
+
+  std::vector<Mesh> meshes;
+  std::vector<Triangle> triangles;
+  std::vector<Sphere> spheres;
   Scene(const std::string& file_name);
 };
 #endif

@@ -11,9 +11,10 @@ class Sphere : public Shape {
  public:
   Vector3 center;
   float radius;
+  int material_id;
 
-  Sphere(const Vector3& center, float radius)
-      : center(center), radius(radius) {}
+  Sphere(const Vector3& center, float radius, int material_id)
+      : center(center), radius(radius), material_id(material_id) {}
 
   Hit_data intersect(const Ray& ray) override {
     Hit_data hit_data;
