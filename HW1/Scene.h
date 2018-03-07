@@ -8,7 +8,9 @@
 #include "Mesh.h"
 #include "Point_light.h"
 #include "Sphere.h"
-#include "Vector3i.cpp"
+#include "Triangle.h"
+#include "Vector3.h"
+#include "Vector3i.h"
 
 class Scene {
  public:
@@ -21,10 +23,18 @@ class Scene {
   std::vector<Point_light> point_lights;
   std::vector<Material> materials;
   std::vector<Vector3> vertex_data;
+  inline const Vector3& get_vertex_at(int index) const {
+    return vertex_data[index];
+  }
 
   std::vector<Mesh> meshes;
   std::vector<Triangle> triangles;
   std::vector<Sphere> spheres;
   Scene(const std::string& file_name);
+  void render_image(int camera_index, Vector3i* result, const int starting_row,
+                    const int height_increase = 0);
+
+ private:
+  Vector3i render_pixel(const Camera& camera, int i, int j);
 };
 #endif

@@ -2,6 +2,26 @@
 #include <sstream>
 #include <string>
 #include "tinyxml2.h"
+
+void Scene::render_image(int camera_index, Vector3i* result,
+                         const int starting_row, const int height_increase) {
+  const Camera& camera = cameras[camera_index];
+  const Image_plane& image_plane = camera.get_image_plane();
+  const int width = image_plane.width;
+  const int height = image_plane.height;
+  for (int j = starting_row; j < height; j += height_increase) {
+    for (int i = 0; i < width; i++) {
+      result[j * width + i] = render_pixel(camera, i, j);
+    }
+  }
+  //
+  //
+}
+Vector3i Scene::render_pixel(const Camera& camera, int i, int j) {
+  const Ray primary_ray = camera.calculate_ray_at(i, j);
+  return Vector3i();
+}
+
 Scene::Scene(const std::string& file_name) {
   tinyxml2::XMLDocument file;
   std::stringstream stream;
@@ -10,7 +30,6 @@ Scene::Scene(const std::string& file_name) {
   if (res) {
     throw std::runtime_error("Error: The xml file cannot be loaded.");
   }
-
   auto root = file.FirstChild();
   if (!root) {
     throw std::runtime_error("Error: Root is not found.");
@@ -24,6 +43,7 @@ Scene::Scene(const std::string& file_name) {
     stream << "0 0 0" << std::endl;
   }
   stream >> background_color.x >> background_color.y >> background_color.z;
+  std::cout << "Background color is parsed" << std::endl;
 
   // Get ShadowRayEpsilon
   element = root->FirstChildElement("ShadowRayEpsilon");
@@ -33,6 +53,7 @@ Scene::Scene(const std::string& file_name) {
     stream << "0.001" << std::endl;
   }
   stream >> shadow_ray_epsilon;
+  std::cout << "shadow_ray_epsilon is parsed" << std::endl;
 
   // Get MaxRecursionDepth
   element = root->FirstChildElement("MaxRecursionDepth");
@@ -42,6 +63,7 @@ Scene::Scene(const std::string& file_name) {
     stream << "0" << std::endl;
   }
   stream >> max_recursion_depth;
+  std::cout << "Max recursion depth is parsed" << std::endl;
 
   // Get Cameras
   element = root->FirstChildElement("Cameras");
@@ -76,6 +98,7 @@ Scene::Scene(const std::string& file_name) {
     Camera camera(up, gaze, position, image_name, near_l, near_r, near_b,
                   near_t, near_distance, image_width, image_height);
     cameras.push_back(camera);
+    std::cout << "Camera is parsed" << std::endl;
     element = element->NextSiblingElement("Camera");
   }
 
@@ -84,6 +107,7 @@ Scene::Scene(const std::string& file_name) {
   auto child = element->FirstChildElement("AmbientLight");
   stream << child->GetText() << std::endl;
   stream >> ambient_light.x >> ambient_light.y >> ambient_light.z;
+  std::cout << "ambient light is parsed" << std::endl;
   element = element->FirstChildElement("PointLight");
   Point_light point_light;
   while (element) {
@@ -98,6 +122,7 @@ Scene::Scene(const std::string& file_name) {
         point_light.intensity.z;
 
     point_lights.push_back(point_light);
+    std::cout << "point light is parsed" << std::endl;
     element = element->NextSiblingElement("PointLight");
   }
 
@@ -107,15 +132,35 @@ Scene::Scene(const std::string& file_name) {
   Material material;
   while (element) {
     child = element->FirstChildElement("AmbientReflectance");
-    stream << child->GetText() << std::endl;
+    if (child) {
+      stream << child->GetText() << std::endl;
+    } else {
+      stream << "0 0 0" << std::endl;
+    }
     child = element->FirstChildElement("DiffuseReflectance");
-    stream << child->GetText() << std::endl;
+    if (child) {
+      stream << child->GetText() << std::endl;
+    } else {
+      stream << "0 0 0" << std::endl;
+    }
     child = element->FirstChildElement("SpecularReflectance");
-    stream << child->GetText() << std::endl;
+    if (child) {
+      stream << child->GetText() << std::endl;
+    } else {
+      stream << "0 0 0" << std::endl;
+    }
     child = element->FirstChildElement("MirrorReflectance");
-    stream << child->GetText() << std::endl;
+    if (child) {
+      stream << child->GetText() << std::endl;
+    } else {
+      stream << "0 0 0" << std::endl;
+    }
     child = element->FirstChildElement("PhongExponent");
-    stream << child->GetText() << std::endl;
+    if (child) {
+      stream << child->GetText() << std::endl;
+    } else {
+      stream << "0 0 0" << std::endl;
+    }
 
     stream >> material.ambient.x >> material.ambient.y >> material.ambient.z;
     stream >> material.diffuse.x >> material.diffuse.y >> material.diffuse.z;
@@ -124,6 +169,7 @@ Scene::Scene(const std::string& file_name) {
     stream >> material.phong_exponent;
 
     materials.push_back(material);
+    std::cout << "material is parsed" << std::endl;
     element = element->NextSiblingElement("Material");
   }
 
@@ -135,6 +181,7 @@ Scene::Scene(const std::string& file_name) {
     stream >> vertex.y >> vertex.z;
     vertex_data.push_back(vertex);
   }
+  std::cout << "vertex_data is parsed" << std::endl;
   stream.clear();
 
   // Get Meshes
@@ -152,10 +199,8 @@ Scene::Scene(const std::string& file_name) {
     int v0_id, v1_id, v2_id;
     while (!(stream >> v0_id).eof()) {
       stream >> v1_id >> v2_id;
-      const Vector3& v_0 = vertex_data[v0_id - 1];
-      const Vector3& v_1 = vertex_data[v1_id - 1];
-      const Vector3& v_2 = vertex_data[v2_id - 1];
-      mesh.triangles.push_back(Triangle(v_0, v_1, v_2, mesh.material_id));
+      mesh.triangles.push_back(
+          Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, mesh.material_id));
     }
     stream.clear();
 
@@ -179,10 +224,8 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     int v0_id, v1_id, v2_id;
     stream >> v0_id >> v1_id >> v2_id;
-    const Vector3& v_0 = vertex_data[v0_id - 1];
-    const Vector3& v_1 = vertex_data[v1_id - 1];
-    const Vector3& v_2 = vertex_data[v2_id - 1];
-    triangles.push_back(Triangle(v_0, v_1, v_2, material_id));
+    triangles.push_back(
+        Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, mesh.material_id));
     element = element->NextSiblingElement("Triangle");
   }
 
