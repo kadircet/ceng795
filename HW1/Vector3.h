@@ -3,11 +3,14 @@
 #define VECTOR3_H_
 #include <cmath>
 #include <iostream>
+#include "Vector3i.h"
 constexpr const float kEpsilon = 1e-6;
 class Vector3 {
  public:
   float x, y, z;
   inline Vector3() : x(0.0f), y(0.0f), z(0.0f) {}
+  inline Vector3(const Vector3i& vector)
+      : x(vector.x), y(vector.y), z(vector.z) {}
   inline Vector3(float val) : x(val), y(val), z(val) {}
   inline Vector3(float X, float Y, float Z) : x(X), y(Y), z(Z) {}
   //

@@ -13,7 +13,7 @@ Triangle::Triangle(const Scene* scene, int index_0, int index_1, int index_2,
   const Vector3& v_2 = scene_->get_vertex_at(index_2);
   normal = (v_1 - v_0).cross(v_2 - v_0).normalize();
 }
-Hit_data Triangle::intersect(const Ray& ray) {
+Hit_data Triangle::intersect(const Ray& ray) const {
   // May hold a_col1 and acol_2 as member?
   const Vector3& v_0 = scene_->get_vertex_at(index_0);
   const Vector3& v_1 = scene_->get_vertex_at(index_1);

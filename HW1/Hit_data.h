@@ -5,7 +5,7 @@
 class Shape;
 struct Hit_data {
   float t;
-  Shape* shape;
+  const Shape* shape;
   Vector3 normal;
   // Material_data material;
 };

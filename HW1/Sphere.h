@@ -16,7 +16,8 @@ class Sphere : public Shape {
   Sphere(const Vector3& center, float radius, int material_id)
       : center(center), radius(radius), material_id(material_id) {}
 
-  Hit_data intersect(const Ray& ray) override {
+  int get_material_id() const override { return material_id; };
+  Hit_data intersect(const Ray& ray) const override {
     Hit_data hit_data;
     hit_data.t = std::numeric_limits<float>::infinity();
     hit_data.shape = NULL;
@@ -28,13 +29,14 @@ class Sphere : public Shape {
     if (determinant < -kEpsilon) {
       return hit_data;
     } else if (determinant < kEpsilon) {
-      hit_data.t = -b / 2 * a;
+      hit_data.t = -b / (2 * a);
       hit_data.normal = (ray.point_at(hit_data.t) - center).normalize();
       hit_data.shape = this;
     } else {
-      const float t1 = (-b + sqrt(determinant)) / 2 * a;
-      const float t2 = (-b - sqrt(determinant)) / 2 * a;
-      // hit_data.t = fmin(t1, t2);
+      const float sqrt_det = sqrt(determinant);
+      const float t1 = (-b + sqrt_det) / (2 * a);
+      const float t2 = (-b - sqrt_det) / (2 * a);
+      hit_data.t = fmin(t1, t2);
       if (t2 < .0) {
         hit_data.t = t1;
       } else {

@@ -14,7 +14,7 @@
 
 class Scene {
  public:
-  Vector3i background_color;
+  Vector3 background_color;
   float shadow_ray_epsilon;
   int max_recursion_depth;
   Vector3 ambient_light;
@@ -35,6 +35,6 @@ class Scene {
                     const int height_increase = 0);
 
  private:
-  Vector3i render_pixel(const Camera& camera, int i, int j);
+  Vector3 trace_ray(const Ray& ray, int max_recursion_depth);
 };
 #endif

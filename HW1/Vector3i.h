@@ -6,9 +6,9 @@
 class Vector3i {
  public:
   float x, y, z;
-  inline Vector3i() : x(0.0f), y(0.0f), z(0.0f) {}
-  inline Vector3i(float val) : x(val), y(val), z(val) {}
-  inline Vector3i(float X, float Y, float Z) : x(X), y(Y), z(Z) {}
+  inline Vector3i() : x(0), y(0), z(0) {}
+  inline Vector3i(int val) : x(val), y(val), z(val) {}
+  inline Vector3i(int X, int Y, int Z) : x(X), y(Y), z(Z) {}
   //
   inline Vector3i operator+(const Vector3i& rhs) const {
     return Vector3i(x + rhs.x, y + rhs.y, z + rhs.z);

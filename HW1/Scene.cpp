@@ -1,8 +1,11 @@
 #include "Scene.h"
+#include <cmath>
 #include <sstream>
 #include <string>
 #include "tinyxml2.h"
+inline int max(int a, int b) { return a > b ? a : b; }
 
+inline int min(int a, int b) { return a < b ? a : b; }
 void Scene::render_image(int camera_index, Vector3i* result,
                          const int starting_row, const int height_increase) {
   const Camera& camera = cameras[camera_index];
@@ -11,15 +14,113 @@ void Scene::render_image(int camera_index, Vector3i* result,
   const int height = image_plane.height;
   for (int j = starting_row; j < height; j += height_increase) {
     for (int i = 0; i < width; i++) {
-      result[j * width + i] = render_pixel(camera, i, j);
+      Vector3 color =
+          trace_ray(camera.calculate_ray_at(i, j), max_recursion_depth);
+      result[j * width + i] = Vector3i(min(255, max(0, int(color.x))),
+                                       min(255, max(0, int(color.y))),
+                                       min(255, max(0, int(color.z))));
     }
   }
   //
   //
 }
-Vector3i Scene::render_pixel(const Camera& camera, int i, int j) {
-  const Ray primary_ray = camera.calculate_ray_at(i, j);
-  return Vector3i();
+Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) {
+  Vector3 color;
+  // Find intersection
+  // TODO: Change here when BVH is introduced
+  Hit_data hit_data;
+  hit_data.t = std::numeric_limits<float>::infinity();
+  hit_data.shape = NULL;
+  for (const Mesh& mesh : meshes) {
+    for (const Triangle& triangle : mesh.triangles) {
+      Hit_data temp_hit_data = triangle.intersect(ray);
+      if (temp_hit_data.t < hit_data.t && temp_hit_data.t > -kEpsilon) {
+        hit_data = temp_hit_data;
+      }
+    }
+  }
+  for (const Triangle& triangle : triangles) {
+    Hit_data temp_hit_data = triangle.intersect(ray);
+    if (temp_hit_data.t < hit_data.t && temp_hit_data.t > -kEpsilon) {
+      hit_data = temp_hit_data;
+    }
+  }
+  for (const Sphere& sphere : spheres) {
+    Hit_data temp_hit_data = sphere.intersect(ray);
+    if (temp_hit_data.t < hit_data.t && temp_hit_data.t > -kEpsilon) {
+      hit_data = temp_hit_data;
+    }
+  }
+  if (hit_data.shape == NULL) {
+    // Check if it is mirror ray
+    if (this->max_recursion_depth == max_recursion_depth) {
+      return background_color;
+    }
+    return Vector3(255, 0, 255);
+    return color;
+  }
+  const Vector3 intersection_point = ray.point_at(hit_data.t);
+  const Material& material = materials[hit_data.shape->get_material_id()];
+  color += material.ambient * ambient_light;
+  const Vector3 w_0 = (ray.o - intersection_point).normalize();
+  for (const Point_light& point_light : point_lights) {
+    // Shadow check
+    // change here when bvh is introduced
+    bool in_shadow = false;
+    const Vector3 light_distance_vec =
+        point_light.position - intersection_point;
+    Ray shadow_ray(
+        intersection_point + (shadow_ray_epsilon * light_distance_vec),
+        light_distance_vec);
+    for (const Mesh& mesh : meshes) {
+      for (const Triangle& triangle : mesh.triangles) {
+        Hit_data shadow_hit_data = triangle.intersect(shadow_ray);
+        if (shadow_hit_data.t <= (1.0f - shadow_ray_epsilon) &&
+            shadow_hit_data.t >= 0.0f) {
+          in_shadow = true;
+          break;
+        }
+      }
+      if (in_shadow) break;
+    }
+    if (in_shadow) continue;
+    for (const Triangle& triangle : triangles) {
+      Hit_data shadow_hit_data = triangle.intersect(shadow_ray);
+      if (shadow_hit_data.t <= (1.0f - shadow_ray_epsilon) &&
+          shadow_hit_data.t >= 0.0f) {
+        in_shadow = true;
+        break;
+      }
+    }
+    if (in_shadow) continue;
+    for (const Sphere& sphere : spheres) {
+      Hit_data shadow_hit_data = sphere.intersect(shadow_ray);
+      if (shadow_hit_data.t <= (1.0f - shadow_ray_epsilon) &&
+          shadow_hit_data.t >= 0.0f) {
+        in_shadow = true;
+        break;
+      }
+    }
+    if (in_shadow) continue;
+    //
+    const Vector3 w_i = light_distance_vec.normalize();
+    float light_distance = light_distance_vec.length();
+    float light_distance_squared = light_distance * light_distance;
+    float diffuse_cos_theta = hit_data.normal.dot(w_i);
+    color += material.diffuse * point_light.intensity * diffuse_cos_theta /
+             light_distance_squared;
+    float specular_cos_theta = fmax(0.0f, hit_data.normal.dot((w_0 + w_i) / 2));
+    color += material.specular * point_light.intensity *
+             pow(specular_cos_theta, material.phong_exponent) /
+             light_distance_squared;
+  }
+  if (material.mirror != Vector3(0.0f) && max_recursion_depth > 0) {
+    Ray mirror_ray =
+        Ray(intersection_point,
+            (2 * hit_data.normal.dot(w_0) * hit_data.normal) - w_0);
+    color += material.mirror * trace_ray(mirror_ray, max_recursion_depth - 1);
+  }
+  return color;
 }
 
 Scene::Scene(const std::string& file_name) {
@@ -159,7 +260,7 @@ Scene::Scene(const std::string& file_name) {
     if (child) {
       stream << child->GetText() << std::endl;
     } else {
-      stream << "0 0 0" << std::endl;
+      stream << "1" << std::endl;
     }
 
     stream >> material.ambient.x >> material.ambient.y >> material.ambient.z;
