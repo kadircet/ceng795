@@ -4,7 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include "Vector3i.h"
-constexpr const float kEpsilon = 1e-6;
+constexpr const float kEpsilon = 0.000001;
 class Vector3 {
  public:
   float x, y, z;

@@ -28,7 +28,7 @@ class Camera {
     const float s_v = (image_plane_.top - image_plane_.bottom) * (y + 0.5f) /
                       image_plane_.height;
     const Vector3& s = top_left_corner + s_u * u - s_v * v;
-    return Ray(e, s - e);
+    return Ray(e, (s - e));
   }
   const Image_plane& get_image_plane() const { return image_plane_; }
   const std::string& get_filename() const { return filename_; }

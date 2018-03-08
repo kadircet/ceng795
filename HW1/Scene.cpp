@@ -34,20 +34,20 @@ Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) {
   for (const Mesh& mesh : meshes) {
     for (const Triangle& triangle : mesh.triangles) {
       Hit_data temp_hit_data = triangle.intersect(ray);
-      if (temp_hit_data.t < hit_data.t && temp_hit_data.t > -kEpsilon) {
+      if (temp_hit_data.t < hit_data.t - kEpsilon && temp_hit_data.t > 0.0f) {
         hit_data = temp_hit_data;
       }
     }
   }
   for (const Triangle& triangle : triangles) {
     Hit_data temp_hit_data = triangle.intersect(ray);
-    if (temp_hit_data.t < hit_data.t && temp_hit_data.t > -kEpsilon) {
+    if (temp_hit_data.t < hit_data.t - kEpsilon && temp_hit_data.t > 0.0f) {
       hit_data = temp_hit_data;
     }
   }
   for (const Sphere& sphere : spheres) {
     Hit_data temp_hit_data = sphere.intersect(ray);
-    if (temp_hit_data.t < hit_data.t && temp_hit_data.t > -kEpsilon) {
+    if (temp_hit_data.t < hit_data.t - kEpsilon && temp_hit_data.t > 0.0f) {
       hit_data = temp_hit_data;
     }
   }
@@ -68,14 +68,14 @@ Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) {
     bool in_shadow = false;
     const Vector3 light_distance_vec =
         point_light.position - intersection_point;
-    Ray shadow_ray(
-        intersection_point + (shadow_ray_epsilon * light_distance_vec),
-        light_distance_vec);
+    const Vector3 w_i = light_distance_vec.normalize();
+    float light_distance = light_distance_vec.length();
+    Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, true);
     for (const Mesh& mesh : meshes) {
       for (const Triangle& triangle : mesh.triangles) {
         Hit_data shadow_hit_data = triangle.intersect(shadow_ray);
-        if (shadow_hit_data.t <= (1.0f - shadow_ray_epsilon) &&
-            shadow_hit_data.t >= 0.0f) {
+        if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
+            shadow_hit_data.t > 0.0f) {
           in_shadow = true;
           break;
         }
@@ -85,8 +85,8 @@ Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) {
     if (in_shadow) continue;
     for (const Triangle& triangle : triangles) {
       Hit_data shadow_hit_data = triangle.intersect(shadow_ray);
-      if (shadow_hit_data.t <= (1.0f - shadow_ray_epsilon) &&
-          shadow_hit_data.t >= 0.0f) {
+      if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
+          shadow_hit_data.t > 0.0f) {
         in_shadow = true;
         break;
       }
@@ -94,21 +94,20 @@ Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) {
     if (in_shadow) continue;
     for (const Sphere& sphere : spheres) {
       Hit_data shadow_hit_data = sphere.intersect(shadow_ray);
-      if (shadow_hit_data.t <= (1.0f - shadow_ray_epsilon) &&
-          shadow_hit_data.t >= 0.0f) {
+      if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
+          shadow_hit_data.t > 0.0f) {
         in_shadow = true;
         break;
       }
     }
     if (in_shadow) continue;
     //
-    const Vector3 w_i = light_distance_vec.normalize();
-    float light_distance = light_distance_vec.length();
     float light_distance_squared = light_distance * light_distance;
     float diffuse_cos_theta = hit_data.normal.dot(w_i);
     color += material.diffuse * point_light.intensity * diffuse_cos_theta /
              light_distance_squared;
-    float specular_cos_theta = fmax(0.0f, hit_data.normal.dot((w_0 + w_i) / 2));
+    float specular_cos_theta =
+        fmax(0.0f, hit_data.normal.dot((w_0 + w_i).normalize()));
     color += material.specular * point_light.intensity *
              pow(specular_cos_theta, material.phong_exponent) /
              light_distance_squared;
@@ -143,7 +142,6 @@ Scene::Scene(const std::string& file_name) {
     stream << "0 0 0" << std::endl;
   }
   stream >> background_color.x >> background_color.y >> background_color.z;
-  std::cout << "Background color is parsed" << std::endl;
 
   // Get ShadowRayEpsilon
   element = root->FirstChildElement("ShadowRayEpsilon");
@@ -153,7 +151,6 @@ Scene::Scene(const std::string& file_name) {
     stream << "0.001" << std::endl;
   }
   stream >> shadow_ray_epsilon;
-  std::cout << "shadow_ray_epsilon is parsed" << std::endl;
 
   // Get MaxRecursionDepth
   element = root->FirstChildElement("MaxRecursionDepth");
@@ -163,7 +160,6 @@ Scene::Scene(const std::string& file_name) {
     stream << "0" << std::endl;
   }
   stream >> max_recursion_depth;
-  std::cout << "Max recursion depth is parsed" << std::endl;
 
   // Get Cameras
   element = root->FirstChildElement("Cameras");
@@ -198,7 +194,6 @@ Scene::Scene(const std::string& file_name) {
     Camera camera(up, gaze, position, image_name, near_l, near_r, near_b,
                   near_t, near_distance, image_width, image_height);
     cameras.push_back(camera);
-    std::cout << "Camera is parsed" << std::endl;
     element = element->NextSiblingElement("Camera");
   }
 
@@ -207,7 +202,6 @@ Scene::Scene(const std::string& file_name) {
   auto child = element->FirstChildElement("AmbientLight");
   stream << child->GetText() << std::endl;
   stream >> ambient_light.x >> ambient_light.y >> ambient_light.z;
-  std::cout << "ambient light is parsed" << std::endl;
   element = element->FirstChildElement("PointLight");
   Point_light point_light;
   while (element) {
@@ -222,7 +216,6 @@ Scene::Scene(const std::string& file_name) {
         point_light.intensity.z;
 
     point_lights.push_back(point_light);
-    std::cout << "point light is parsed" << std::endl;
     element = element->NextSiblingElement("PointLight");
   }
 
@@ -269,7 +262,6 @@ Scene::Scene(const std::string& file_name) {
     stream >> material.phong_exponent;
 
     materials.push_back(material);
-    std::cout << "material is parsed" << std::endl;
     element = element->NextSiblingElement("Material");
   }
 
@@ -281,7 +273,6 @@ Scene::Scene(const std::string& file_name) {
     stream >> vertex.y >> vertex.z;
     vertex_data.push_back(vertex);
   }
-  std::cout << "vertex_data is parsed" << std::endl;
   stream.clear();
 
   // Get Meshes
