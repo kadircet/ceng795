@@ -28,7 +28,7 @@ Hit_data Triangle::intersect(const Ray& ray) const {
   const Vector3 a_col2 = v_0 - v_2;
   const Vector3& a_col3 = ray.d;
   const float det_a = determinant(a_col1, a_col2, a_col3);
-  if (det_a > -kEpsilon && det_a < kEpsilon) {
+  if (det_a == 0.0f) {
     return hit_data;
   }
   const Vector3 b = (v_0 - ray.o) / det_a;
