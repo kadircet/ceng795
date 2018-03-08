@@ -103,7 +103,7 @@ class Vector3 {
   }
 
   inline float dot(const Vector3& rhs) const {
-    return x * rhs.x + y * rhs.y + z * rhs.z;
+    return (x * rhs.x) + (y * rhs.y) + (z * rhs.z);
   }
   inline Vector3 cross(const Vector3& rhs) const {
     return Vector3(y * rhs.z - z * rhs.y, z * rhs.x - x * rhs.z,

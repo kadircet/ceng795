@@ -56,7 +56,6 @@ Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) {
     if (this->max_recursion_depth == max_recursion_depth) {
       return background_color;
     }
-    return Vector3(255, 0, 255);
     return color;
   }
   const Vector3 intersection_point = ray.point_at(hit_data.t);
@@ -115,9 +114,9 @@ Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) {
              light_distance_squared;
   }
   if (material.mirror != Vector3(0.0f) && max_recursion_depth > 0) {
-    Ray mirror_ray =
-        Ray(intersection_point,
-            (2 * hit_data.normal.dot(w_0) * hit_data.normal) - w_0);
+    const Vector3 w_r =
+        ((2 * hit_data.normal.dot(w_0) * hit_data.normal) - w_0).normalize();
+    Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
     color += material.mirror * trace_ray(mirror_ray, max_recursion_depth - 1);
   }
   return color;

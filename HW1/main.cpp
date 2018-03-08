@@ -3,7 +3,7 @@
 #include "Scene.h"
 #include "lodepng/lodepng.h"
 
-#define THREAD_MULTIPLIER 1
+#define THREAD_MULTIPLIER 0
 int main(int argc, char* argv[]) {
   if (argc < 2) {
     std::cerr << "Please provise scene file as argument" << std::endl;
