@@ -7,7 +7,8 @@ inline int max(int a, int b) { return a > b ? a : b; }
 
 inline int min(int a, int b) { return a < b ? a : b; }
 void Scene::render_image(int camera_index, Vector3i* result,
-                         const int starting_row, const int height_increase) {
+                         const int starting_row,
+                         const int height_increase) const {
   const Camera& camera = cameras[camera_index];
   const Image_plane& image_plane = camera.get_image_plane();
   const int width = image_plane.width;
@@ -24,7 +25,7 @@ void Scene::render_image(int camera_index, Vector3i* result,
   //
   //
 }
-Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) {
+Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) const {
   Vector3 color;
   // Find intersection
   // TODO: Change here when BVH is introduced

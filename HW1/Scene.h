@@ -32,9 +32,9 @@ class Scene {
   std::vector<Sphere> spheres;
   Scene(const std::string& file_name);
   void render_image(int camera_index, Vector3i* result, const int starting_row,
-                    const int height_increase = 1);
+                    const int height_increase = 1) const;
 
  private:
-  Vector3 trace_ray(const Ray& ray, int max_recursion_depth);
+  Vector3 trace_ray(const Ray& ray, int max_recursion_depth) const;
 };
 #endif
