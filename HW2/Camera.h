@@ -8,9 +8,11 @@
 class Camera {
  public:
   Camera(const Vector3& up, const Vector3& gaze, const Vector3& position,
-         const std::string& filename, float left, float right, float bottom,
-         float top, float distance, int image_width, int image_height)
+         int number_of_samples, const std::string& filename, float left,
+         float right, float bottom, float top, float distance, int image_width,
+         int image_height)
       : e(position),
+        number_of_samples_(number_of_samples),
         filename_(filename),
         image_plane_(left, right, bottom, top, distance, image_width,
                      image_height) {
@@ -20,18 +22,20 @@ class Camera {
 
     top_left_corner = e - w * image_plane_.distance + image_plane_.left * u +
                       image_plane_.top * v;
+    s_u_constant =
+        ((image_plane_.right - image_plane_.left) / image_plane_.width) * u;
+    s_v_constant =
+        ((image_plane_.top - image_plane_.bottom) / image_plane_.height) * v;
   }
-  Ray calculate_ray_at(int x, int y) const {
+  Ray calculate_ray_at(float x, float y) const {
     // For now, origin is top_left, right handed camera
-    const float s_u = (image_plane_.right - image_plane_.left) * (x + 0.5f) /
-                      image_plane_.width;
-    const float s_v = (image_plane_.top - image_plane_.bottom) * (y + 0.5f) /
-                      image_plane_.height;
-    const Vector3& s = top_left_corner + s_u * u - s_v * v;
+    const Vector3& s =
+        top_left_corner + (x + 0.5) * s_u_constant - (y + 0.5) * s_v_constant;
     return Ray(e, (s - e));
   }
   const Image_plane& get_image_plane() const { return image_plane_; }
   const std::string& get_filename() const { return filename_; }
+  int get_number_of_samples() const { return number_of_samples_; }
 
  private:
   // implement a matrix frame for both basis and position?
@@ -40,8 +44,11 @@ class Camera {
   Vector3 w;  // forward vector
   Vector3 e;  // position
 
+  Vector3 s_u_constant;
+  Vector3 s_v_constant;
   Vector3 top_left_corner;
 
+  int number_of_samples_;
   const std::string filename_;
   Image_plane image_plane_;
 };

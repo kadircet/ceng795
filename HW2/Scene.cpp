@@ -1,5 +1,6 @@
 #include "Scene.h"
 #include <cmath>
+#include <random>
 #include <sstream>
 #include <string>
 #include "Pixel.h"
@@ -15,15 +16,36 @@ void Scene::render_image(int camera_index, Pixel* result,
   const Image_plane& image_plane = camera.get_image_plane();
   const int width = image_plane.width;
   const int height = image_plane.height;
-  for (int j = starting_row; j < height; j += height_increase) {
-    for (int i = 0; i < width; i++) {
-      Vector3 color =
-          trace_ray(camera.calculate_ray_at(i, j), max_recursion_depth);
-      result[j * width + i].add_color(color, 1);
+  const int number_of_samples = camera.get_number_of_samples();
+  if (number_of_samples == 1) {
+    for (int j = starting_row; j < height; j += height_increase) {
+      for (int i = 0; i < width; i++) {
+        Vector3 color =
+            trace_ray(camera.calculate_ray_at(i, j), max_recursion_depth);
+        result[j * width + i].add_color(color, 1);
+      }
+    }
+  } else {
+    for (int j = starting_row; j < height; j += height_increase) {
+      for (int i = 0; i < width; i++) {
+        std::default_random_engine generator;
+        std::uniform_real_distribution<float> distribution(0.0, 1);
+        for (int x = 0; x < number_of_samples; x++) {
+          for (int y = 0; y < number_of_samples; y++) {
+            float sigma_x = distribution(generator);
+            float sigma_y = distribution(generator);
+            float sample_x = (x + sigma_x) / number_of_samples;
+            float sample_y = (y + sigma_y) / number_of_samples;
+            Vector3 color = trace_ray(
+                camera.calculate_ray_at(i - 0.5 + sample_x, j - 0.5 + sample_y),
+                max_recursion_depth);
+            // just average for now
+            result[j * width + i].add_color(color, 1);
+          }
+        }
+      }
     }
   }
-  //
-  //
 }
 Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) const {
   Vector3 color;
@@ -133,12 +155,19 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("ImageResolution");
     stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("NumSamples");
+    if (child) {
+      stream << child->GetText() << std::endl;
+    } else {
+      stream << 1 << std::endl;
+    }
     child = element->FirstChildElement("ImageName");
     stream << child->GetText() << std::endl;
     Vector3 position, up, gaze;
     float near_distance;
     float near_l, near_r, near_b, near_t;
     int image_width, image_height;
+    int number_of_samples;
     std::string image_name;
     stream >> position.x >> position.y >> position.z;
     stream >> gaze.x >> gaze.y >> gaze.z;
@@ -146,9 +175,13 @@ Scene::Scene(const std::string& file_name) {
     stream >> near_l >> near_r >> near_b >> near_t;
     stream >> near_distance;
     stream >> image_width >> image_height;
+    stream >> number_of_samples;
+    number_of_samples = sqrt(number_of_samples);
+    if (number_of_samples <= 0) number_of_samples = 1;
     stream >> image_name;
-    Camera camera(up, gaze, position, image_name, near_l, near_r, near_b,
-                  near_t, near_distance, image_width, image_height);
+    Camera camera(up, gaze, position, number_of_samples, image_name, near_l,
+                  near_r, near_b, near_t, near_distance, image_width,
+                  image_height);
     cameras.push_back(camera);
     element = element->NextSiblingElement("Camera");
   }
