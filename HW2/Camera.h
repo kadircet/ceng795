@@ -29,7 +29,7 @@ class Camera {
   }
   Ray calculate_ray_at(float x, float y) const {
     // For now, origin is top_left, right handed camera
-    const Vector3& s =
+    const Vector3 s =
         top_left_corner + (x + 0.5) * s_u_constant - (y + 0.5) * s_v_constant;
     return Ray(e, (s - e));
   }

@@ -6,6 +6,7 @@
 #include "Vector3i.h"
 class Pixel {
  public:
+  Pixel() : color(0.0f), weight(0.0f) {}
   Vector3 color;
   float weight;
   void add_color(const Vector3& color, float weight) {
