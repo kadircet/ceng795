@@ -6,6 +6,7 @@
 #include "lodepng/lodepng.h"
 #include "timeutil.h"
 #define THREAD_MULTIPLIER 1
+
 int main(int argc, char* argv[]) {
   if (argc < 2) {
     std::cerr << "Please provide scene file as argument" << std::endl;

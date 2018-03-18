@@ -8,6 +8,10 @@
 inline int max(int a, int b) { return a > b ? a : b; }
 
 inline int min(int a, int b) { return a < b ? a : b; }
+
+inline float gaussian_filter(float x, float y, float sigma) {
+  return exp(-(x * x + y * y) / (2 * sigma * sigma)) / (2 * M_PI * sigma);
+}
 void debug(const char* str) { std::cout << str << std::endl; }
 void Scene::render_image(int camera_index, Pixel* result,
                          const int starting_row,
@@ -29,18 +33,34 @@ void Scene::render_image(int camera_index, Pixel* result,
     for (int j = starting_row; j < height; j += height_increase) {
       for (int i = 0; i < width; i++) {
         std::default_random_engine generator;
+        generator.seed(
+            std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> distribution(0.0, 1);
         for (int x = 0; x < number_of_samples; x++) {
           for (int y = 0; y < number_of_samples; y++) {
-            float sigma_x = distribution(generator);
-            float sigma_y = distribution(generator);
-            float sample_x = (x + sigma_x) / number_of_samples;
-            float sample_y = (y + sigma_y) / number_of_samples;
+            float epsilon_x = distribution(generator);
+            float epsilon_y = distribution(generator);
+            float sample_x = (x + epsilon_x) / number_of_samples;
+            float sample_y = (y + epsilon_y) / number_of_samples;
+            // since calculate_ray_at adds 0.5 to the pixel number, subtracting
+            // 0.5
             Vector3 color = trace_ray(
-                camera.calculate_ray_at(i - 0.5 + sample_x, j - 0.5 + sample_y),
+                camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5),
                 max_recursion_depth);
-            // just average for now
-            result[j * width + i].add_color(color, 1);
+            for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
+              if (affected_j < 0 || affected_j >= height) {
+                continue;
+              }
+              for (int affected_i = i - 1; affected_i < i + 2; affected_i++) {
+                if (affected_i < 0 || affected_i >= width) {
+                  continue;
+                }
+                float s_x = (i + sample_x) - (affected_i + 0.5f);
+                float s_y = (j + sample_y) - (affected_j + 0.5f);
+                result[affected_j * width + affected_i].add_color(
+                    color, gaussian_filter(s_x, s_y, 1.0f / 3.0f));
+              }
+            }
           }
         }
       }
@@ -50,7 +70,6 @@ void Scene::render_image(int camera_index, Pixel* result,
 Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) const {
   Vector3 color;
   // Find intersection
-  // TODO: Change here when BVH is introduced
   Hit_data hit_data;
   hit_data.t = std::numeric_limits<float>::infinity();
   hit_data.shape = NULL;
@@ -68,7 +87,6 @@ Vector3 Scene::trace_ray(const Ray& ray, int max_recursion_depth) const {
   const Vector3 w_0 = (ray.o - intersection_point).normalize();
   for (const Point_light& point_light : point_lights) {
     // Shadow check
-    // change here when bvh is introduced
     const Vector3 light_distance_vec =
         point_light.position - intersection_point;
     const Vector3 w_i = light_distance_vec.normalize();
