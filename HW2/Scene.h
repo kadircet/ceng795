@@ -13,6 +13,7 @@
 #include "Triangle.h"
 #include "Vector3.h"
 #include "Vector3i.h"
+class Pixel;
 
 class Scene {
  public:
@@ -30,7 +31,7 @@ class Scene {
   }
 
   Scene(const std::string& file_name);
-  void render_image(int camera_index, Vector3i* result, const int starting_row,
+  void render_image(int camera_index, Pixel* result, const int starting_row,
                     const int height_increase = 1) const;
   ~Scene();
 

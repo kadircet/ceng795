@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include "Pixel.h"
 #include "Scene.h"
 #include "lodepng/lodepng.h"
 #include "timeutil.h"
@@ -20,7 +21,7 @@ int main(int argc, char* argv[]) {
     const Image_plane& image_plane = camera.get_image_plane();
     const int width = image_plane.width;
     const int height = image_plane.height;
-    Vector3i* pixels = new Vector3i[width * height];
+    Pixel* pixels = new Pixel[width * height];
     auto start = std::chrono::system_clock::now();
     if (thread_count == 0 || height < thread_count) {
       std::cout << "Starting rendering on #1 thread(s)" << std::endl;
@@ -43,7 +44,7 @@ int main(int argc, char* argv[]) {
     int idx = 0;
     for (int j = 0; j < height; j++) {
       for (int i = 0; i < width; i++) {
-        const Vector3i& pixel = pixels[j * width + i];
+        const Vector3i pixel = pixels[j * width + i].get_color();
         image[idx++] = pixel.x;
         image[idx++] = pixel.y;
         image[idx++] = pixel.z;

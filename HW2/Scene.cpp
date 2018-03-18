@@ -2,12 +2,13 @@
 #include <cmath>
 #include <sstream>
 #include <string>
+#include "Pixel.h"
 #include "tinyxml2.h"
 inline int max(int a, int b) { return a > b ? a : b; }
 
 inline int min(int a, int b) { return a < b ? a : b; }
 void debug(const char* str) { std::cout << str << std::endl; }
-void Scene::render_image(int camera_index, Vector3i* result,
+void Scene::render_image(int camera_index, Pixel* result,
                          const int starting_row,
                          const int height_increase) const {
   const Camera& camera = cameras[camera_index];
@@ -18,9 +19,7 @@ void Scene::render_image(int camera_index, Vector3i* result,
     for (int i = 0; i < width; i++) {
       Vector3 color =
           trace_ray(camera.calculate_ray_at(i, j), max_recursion_depth);
-      result[j * width + i] = Vector3i(min(255, max(0, int(color.x))),
-                                       min(255, max(0, int(color.y))),
-                                       min(255, max(0, int(color.z))));
+      result[j * width + i].add_color(color, 1);
     }
   }
   //
