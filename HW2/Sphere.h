@@ -23,17 +23,14 @@ class Sphere : public Shape {
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;
   }
-  Hit_data intersect(const Ray& ray) const override {
-    Hit_data hit_data;
-    hit_data.t = std::numeric_limits<float>::infinity();
-    hit_data.shape = NULL;
+  bool intersect(const Ray& ray, Hit_data& hit_data) const override {
     Vector3 center_to_origin = ray.o - center;
     const float a = ray.d.dot(ray.d);
     const float b = 2 * ray.d.dot(center_to_origin);
     const float c = center_to_origin.dot(center_to_origin) - radius * radius;
     const float determinant = b * b - 4 * a * c;
     if (determinant < -kEpsilon) {
-      return hit_data;
+      return false;
     } else if (determinant < kEpsilon) {
       hit_data.t = -b / (2 * a);
       hit_data.normal = (ray.point_at(hit_data.t) - center).normalize();
@@ -51,7 +48,7 @@ class Sphere : public Shape {
       hit_data.normal = (ray.point_at(hit_data.t) - center).normalize();
       hit_data.shape = this;
     }
-    return hit_data;
+    return true;
   }
   void print_debug(int indentation) const override {
     for (int index = 0; index < indentation; index++) {

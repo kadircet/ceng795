@@ -9,7 +9,7 @@ class Shape {
  public:
   virtual ~Shape() = 0;
   virtual const Bounding_box& get_bounding_box() const = 0;
-  virtual Hit_data intersect(const Ray& ray) const = 0;
+  virtual bool intersect(const Ray& ray, Hit_data& hit_data) const = 0;
   virtual int get_material_id() const = 0;
   virtual void print_debug(int indent) const = 0;
 };

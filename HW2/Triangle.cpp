@@ -32,11 +32,8 @@ Triangle::Triangle(const Scene* scene, int index_0, int index_1, int index_2,
   max_c.z = fmax(max_c.z, v_2.z);
   bounding_box_ = Bounding_box(min_c, max_c);
 }
-Hit_data Triangle::intersect(const Ray& ray) const {
+bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   // May hold a_col1 and acol_2 as member?
-  Hit_data hit_data;
-  hit_data.t = std::numeric_limits<float>::infinity();
-  hit_data.shape = NULL;
   /*if (!ray.shadow && ray.d.dot(normal) > 0.0f) {
     return hit_data;
   }*/
@@ -48,14 +45,14 @@ Hit_data Triangle::intersect(const Ray& ray) const {
   const Vector3& a_col3 = ray.d;
   const float det_a = determinant(a_col1, a_col2, a_col3);
   if (det_a == 0.0f) {
-    return hit_data;
+    return false;
   }
   const Vector3 b = (v_0 - ray.o) / det_a;
   const float beta = determinant(b, a_col2, a_col3);
-  if (beta < 0.0f - kEpsilon || beta > 1.0f + kEpsilon) return hit_data;
+  if (beta < 0.0f - kEpsilon || beta > 1.0f + kEpsilon) return false;
   const float gamma = determinant(a_col1, b, a_col3);
   if (gamma < 0.0f - kEpsilon || beta + gamma > 1.0f + kEpsilon) {
-    return hit_data;
+    return false;
   }
   const float t = determinant(a_col1, a_col2, b);
   if (t > -kEpsilon) {
@@ -63,5 +60,5 @@ Hit_data Triangle::intersect(const Ray& ray) const {
     hit_data.shape = this;
     hit_data.normal = this->normal;
   }
-  return hit_data;
+  return true;
 }

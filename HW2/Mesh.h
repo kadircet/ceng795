@@ -10,8 +10,8 @@ class Mesh : public Shape {
   int material_id;
   int texture_id;
   Shape* bvh;
-  Hit_data intersect(const Ray& ray) const override {
-    return bvh->intersect(ray);
+  bool intersect(const Ray& ray, Hit_data& hit_data) const override {
+    return bvh->intersect(ray, hit_data);
   }
   int get_material_id() const override { return material_id; }
   const Bounding_box& get_bounding_box() const override {

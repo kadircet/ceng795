@@ -89,8 +89,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   Hit_data hit_data;
   hit_data.t = std::numeric_limits<float>::infinity();
   hit_data.shape = NULL;
-  hit_data = bvh->intersect(ray);
-  if (hit_data.shape == NULL) {
+  if (!bvh->intersect(ray, hit_data)) {
     // Check if it is primary ray or mirror ray
     if (this->max_recursion_depth == current_recursion_depth) {
       return background_color;
@@ -109,7 +108,10 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     const Vector3 w_i = light_distance_vec.normalize();
     float light_distance = light_distance_vec.length();
     Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, true);
-    Hit_data shadow_hit_data = bvh->intersect(shadow_ray);
+    Hit_data shadow_hit_data;
+    shadow_hit_data.t = std::numeric_limits<float>::infinity();
+    shadow_hit_data.shape = NULL;
+    bvh->intersect(shadow_ray, shadow_hit_data);
     if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
         shadow_hit_data.t > 0.0f) {
       continue;

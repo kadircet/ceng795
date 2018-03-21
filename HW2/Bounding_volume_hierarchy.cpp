@@ -28,22 +28,28 @@ BVH::BVH(std::vector<Shape*>& objects, int start, int end, int dimension)
   }
 }
 
-Hit_data BVH::intersect(const Ray& ray) const {
-  Hit_data hit_data;
-  hit_data.t = std::numeric_limits<float>::infinity();
-  hit_data.shape = NULL;
+bool BVH::intersect(const Ray& ray, Hit_data& hit_data) const {
   float bbox_t = bounding_box.intersect(ray);
   if (bbox_t < kEpsilon || bbox_t == kInf) {
-    return hit_data;
+    return false;
   }
-  Hit_data left_hit_data = left->intersect(ray);
-  if (left_hit_data.t > kEpsilon && left_hit_data.t < hit_data.t) {
+  bool intersect = false;
+  Hit_data left_hit_data;
+  left_hit_data.t = std::numeric_limits<float>::infinity();
+  left_hit_data.shape = NULL;
+  if (left->intersect(ray, left_hit_data) && left_hit_data.t > kEpsilon &&
+      left_hit_data.t < hit_data.t) {
     hit_data = left_hit_data;
+    intersect = true;
   }
-  Hit_data right_hit_data = right->intersect(ray);
-  if (right_hit_data.t > kEpsilon && right_hit_data.t < hit_data.t) {
+  Hit_data right_hit_data;
+  right_hit_data.t = std::numeric_limits<float>::infinity();
+  right_hit_data.shape = NULL;
+  if (right->intersect(ray, right_hit_data) && right_hit_data.t > kEpsilon &&
+      right_hit_data.t < hit_data.t) {
+    intersect = true;
     hit_data = right_hit_data;
   }
 
-  return hit_data;
+  return intersect;
 }

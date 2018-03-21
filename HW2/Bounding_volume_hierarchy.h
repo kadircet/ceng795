@@ -25,7 +25,7 @@ class BVH : public Shape {
       delete right;
     }
   }
-  Hit_data intersect(const Ray& ray) const override;
+  bool intersect(const Ray& ray, Hit_data& hit_data) const override;
   int get_material_id() const override { return -1; }
   const Bounding_box& get_bounding_box() const override { return bounding_box; }
   void print_debug(int indentation) const override {
