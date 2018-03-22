@@ -49,16 +49,17 @@ bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   }
   const Vector3 b = (v_0 - ray.o) / det_a;
   const float beta = determinant(b, a_col2, a_col3);
-  if (beta < 0.0f - kEpsilon || beta > 1.0f + kEpsilon) return false;
+  if (beta < 0.0f || beta > 1.0f) return false;
   const float gamma = determinant(a_col1, b, a_col3);
-  if (gamma < 0.0f - kEpsilon || beta + gamma > 1.0f + kEpsilon) {
+  if (gamma < 0.0f || beta + gamma > 1.0f) {
     return false;
   }
   const float t = determinant(a_col1, a_col2, b);
-  if (t > -kEpsilon) {
+  if (t > 0.0f) {
     hit_data.t = t;
     hit_data.shape = this;
     hit_data.normal = this->normal;
+    return true;
   }
-  return true;
+  return false;
 }

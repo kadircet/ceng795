@@ -31,7 +31,7 @@ class Camera {
     // For now, origin is top_left, right handed camera
     const Vector3 s =
         top_left_corner + (x + 0.5) * s_u_constant - (y + 0.5) * s_v_constant;
-    return Ray(e, (s - e));
+    return Ray(e, (s - e).normalize());
   }
   const Image_plane& get_image_plane() const { return image_plane_; }
   const std::string& get_filename() const { return filename_; }

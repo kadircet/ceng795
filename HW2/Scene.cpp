@@ -44,9 +44,10 @@ void Scene::render_image(int camera_index, Pixel* result,
             float sample_y = (y + epsilon_y) / number_of_samples;
             // since calculate_ray_at adds 0.5 to the pixel number, subtracting
             // 0.5
-            Vector3 color = trace_ray(
+            const Vector3 color = trace_ray(
                 camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5),
                 max_recursion_depth);
+
             for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
               if (affected_j < 0 || affected_j >= height) {
                 continue;
@@ -83,6 +84,7 @@ bool Scene::refract_ray(const Vector3& direction_unit, const Vector3& normal,
           .normalize();
   return true;
 }
+
 Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   Vector3 color;
   // Find intersection
@@ -153,9 +155,9 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     float n = material.refraction_index;
     bool total_internal_reflection = false;
     bool entering_ray;
-    if (d_n.dot(normal) < 0.0f && !ray.in_medium) {
+    if (d_n.dot(normal) < 0.0f) {
       refract_ray(d_n, normal, n, transmission_direction);
-      cos_theta = -d_n.dot(normal);
+      cos_theta = (-d_n).dot(normal);
       k = Vector3(1.0f);
       entering_ray = true;
     } else {

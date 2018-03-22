@@ -27,7 +27,7 @@ float Bounding_box::intersect(const Ray& ray) const {
     if (tmin > tmax) return kInf;
   }
 
-  if (tmin > kEpsilon) {
+  if (tmin > 0.0f) {
     return tmin;
   } else {
     return tmax;
