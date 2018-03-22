@@ -98,34 +98,42 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   }
   const Vector3 intersection_point = ray.point_at(hit_data.t);
   const Material& material = materials[hit_data.shape->get_material_id()];
-  color += material.ambient * ambient_light;
+
   const Vector3 w_0 = (ray.o - intersection_point).normalize();
   const Vector3& normal = hit_data.normal;
-  for (const Point_light& point_light : point_lights) {
-    // Shadow check
-    const Vector3 light_distance_vec =
-        point_light.position - intersection_point;
-    const Vector3 w_i = light_distance_vec.normalize();
-    float light_distance = light_distance_vec.length();
-    Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, true);
-    Hit_data shadow_hit_data;
-    shadow_hit_data.t = std::numeric_limits<float>::infinity();
-    shadow_hit_data.shape = NULL;
-    bvh->intersect(shadow_ray, shadow_hit_data);
-    if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
-        shadow_hit_data.t > 0.0f) {
-      continue;
+
+  if (!ray.in_medium) {
+    // ambient light
+    // Should it be outside of if statement?
+    color += material.ambient * ambient_light;
+
+    // point lights
+    for (const Point_light& point_light : point_lights) {
+      // Shadow check
+      const Vector3 light_distance_vec =
+          point_light.position - intersection_point;
+      const Vector3 w_i = light_distance_vec.normalize();
+      float light_distance = light_distance_vec.length();
+      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i);
+      Hit_data shadow_hit_data;
+      shadow_hit_data.t = std::numeric_limits<float>::infinity();
+      shadow_hit_data.shape = NULL;
+      bvh->intersect(shadow_ray, shadow_hit_data);
+      if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
+          shadow_hit_data.t > 0.0f) {
+        continue;
+      }
+      //
+      float light_distance_squared = light_distance * light_distance;
+      float diffuse_cos_theta = hit_data.normal.dot(w_i);
+      color += material.diffuse * point_light.intensity * diffuse_cos_theta /
+               light_distance_squared;
+      float specular_cos_theta =
+          fmax(0.0f, hit_data.normal.dot((w_0 + w_i).normalize()));
+      color += material.specular * point_light.intensity *
+               pow(specular_cos_theta, material.phong_exponent) /
+               light_distance_squared;
     }
-    //
-    float light_distance_squared = light_distance * light_distance;
-    float diffuse_cos_theta = hit_data.normal.dot(w_i);
-    color += material.diffuse * point_light.intensity * diffuse_cos_theta /
-             light_distance_squared;
-    float specular_cos_theta =
-        fmax(0.0f, hit_data.normal.dot((w_0 + w_i).normalize()));
-    color += material.specular * point_light.intensity *
-             pow(specular_cos_theta, material.phong_exponent) /
-             light_distance_squared;
   }
   // Reflection
   if (material.mirror != zero_vector && current_recursion_depth > 0) {
@@ -134,8 +142,9 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     color +=
         material.mirror * trace_ray(mirror_ray, current_recursion_depth - 1);
   }
+
   // Refraction
-  if (material.transparency != zero_vector) {
+  if (material.transparency != zero_vector && current_recursion_depth > 0) {
     const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
     Vector3 transmission_direction = zero_vector;
     float cos_theta = 0.0f;
@@ -143,45 +152,42 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     Vector3 d_n = ray.d.normalize();
     float n = material.refraction_index;
     bool total_internal_reflection = false;
-    if (d_n.dot(normal) < 0.0f) {
+    bool entering_ray;
+    if (d_n.dot(normal) < 0.0f && !ray.in_medium) {
       refract_ray(d_n, normal, n, transmission_direction);
       cos_theta = -d_n.dot(normal);
       k = Vector3(1.0f);
+      entering_ray = true;
     } else {
       const Vector3& transparency = material.transparency;
       const float hit_data_t = hit_data.t;
       k.x = exp(-log(transparency.x) * hit_data_t);
       k.y = exp(-log(transparency.y) * hit_data_t);
       k.z = exp(-log(transparency.z) * hit_data_t);
+      entering_ray = false;
       if (refract_ray(d_n, -normal, 1.0f / n, transmission_direction)) {
         cos_theta = transmission_direction.dot(normal);
       } else {
         total_internal_reflection = true;
       }
     }
-    if (total_internal_reflection && current_recursion_depth > 0) {
+
+    if (total_internal_reflection) {
       Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
+      reflection_ray.in_medium = true;
       color += k * trace_ray(reflection_ray, current_recursion_depth - 1);
-    } else if (!total_internal_reflection) {
+    } else {
       float r_0 = (n - 1) * (n - 1) / ((n + 1) * (n + 1));
       float r = r_0 + (1 - r_0) * pow(1 - cos_theta, 5);
-      if (current_recursion_depth > 0) {
-        Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon),
-                           w_r);
-        Ray transmission_ray(
-            intersection_point + (transmission_direction * shadow_ray_epsilon),
-            transmission_direction);
-        color +=
-            k *
-            (r * trace_ray(reflection_ray, current_recursion_depth - 1) +
-             (1 - r) * trace_ray(transmission_ray, current_recursion_depth));
-      } else {
-        Ray transmission_ray(
-            intersection_point + (transmission_direction * shadow_ray_epsilon),
-            transmission_direction);
-        color += k * ((1 - r) *
-                      trace_ray(transmission_ray, current_recursion_depth));
-      }
+      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
+      reflection_ray.in_medium = !entering_ray;
+      Ray transmission_ray(
+          intersection_point + (transmission_direction * shadow_ray_epsilon),
+          transmission_direction);
+      transmission_ray.in_medium = entering_ray;
+      color += k * (r * trace_ray(reflection_ray, current_recursion_depth - 1) +
+                    (1 - r) * trace_ray(transmission_ray,
+                                        current_recursion_depth - 1));
     }
   }
   return color;
