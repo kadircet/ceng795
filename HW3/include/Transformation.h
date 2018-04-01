@@ -9,11 +9,15 @@ public:
 	const Matrix4x4& get_transformation_matrix() const { 
 		return transformation_; 
 	}
+	const Matrix4x4& get_normal_transformation_matrix() const {
+		return normal_transformation_;
+	}
 	const Matrix4x4& get_inverse_transformation_matrix() const {
 		return inverse_transformation_;
 	}
 protected:
 	Matrix4x4 transformation_;
+	Matrix4x4 normal_transformation_;
 	Matrix4x4 inverse_transformation_;
 };
 

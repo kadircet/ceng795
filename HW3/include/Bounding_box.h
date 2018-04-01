@@ -2,8 +2,10 @@
 #define BOUNDING_BOX_H_
 #include "Ray.h"
 #include "Vector3.h"
+class Transformation;
 class Bounding_box {
  public:
+  static Bounding_box apply_transform(const Bounding_box& bounding_box, const Transformation& transform);
   Bounding_box()
       : min_corner(kInf, kInf, kInf), max_corner(-kInf, -kInf, -kInf) {}
   Bounding_box(const Vector3& min, const Vector3& max)

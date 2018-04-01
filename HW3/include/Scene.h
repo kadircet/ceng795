@@ -12,6 +12,7 @@
 #include "Sphere.h"
 #include "Triangle.h"
 #include "Vector3.h"
+#include "Transformation.h"
 class Pixel;
 
 class Scene {
@@ -21,6 +22,10 @@ class Scene {
   int max_recursion_depth;
   Vector3 ambient_light;
   Shape* bvh;
+  std::vector<Mesh*> meshes;
+  std::vector<Scaling> scaling_transformations;
+  std::vector<Translation> translation_transformations;
+  std::vector<Rotation> rotation_transformations;
   std::vector<Camera> cameras;
   std::vector<Point_light> point_lights;
   std::vector<Material> materials;

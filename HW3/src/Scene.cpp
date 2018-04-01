@@ -13,6 +13,8 @@ inline float gaussian_filter(float x, float y, float sigma) {
   return exp(-(x * x + y * y) / (2 * sigma * sigma)) / (float) (2 * M_PI * sigma);
 }
 void debug(const char* str) { std::cout << str << std::endl; }
+
+
 void Scene::render_image(int camera_index, Pixel* result,
                          const int starting_row,
                          const int height_increase) const {
@@ -281,6 +283,7 @@ Scene::Scene(const std::string& file_name) {
     cameras.push_back(camera);
     element = element->NextSiblingElement("Camera");
   }
+  stream.clear();
 
   // Get Lights
   element = root->FirstChildElement("Lights");
@@ -303,6 +306,7 @@ Scene::Scene(const std::string& file_name) {
     point_lights.push_back(point_light);
     element = element->NextSiblingElement("PointLight");
   }
+  stream.clear();
 
   // Get Materials
   element = root->FirstChildElement("Materials");
@@ -364,6 +368,44 @@ Scene::Scene(const std::string& file_name) {
     materials.push_back(material);
     element = element->NextSiblingElement("Material");
   }
+  stream.clear();
+
+  // Get Transformations
+  element = root->FirstChildElement("Transformations");
+  const float degree_to_pi = M_PI / 180.0f;
+  if (element) {
+	  // Get Scalings
+	  child = element->FirstChildElement("Scaling");
+	  while (child) {
+		  float x, y, z;
+		  stream << child->GetText() << std::endl;
+		  stream >> x >> y >> z;
+		  //TODO: maybe move?
+		  scaling_transformations.push_back(Scaling(x, y, z));
+		  child = child->NextSiblingElement("Scaling");
+	  }
+	  // Get Translations
+	  child = element->FirstChildElement("Translation");
+	  while (child) {
+		  float x, y, z;
+		  stream << child->GetText() << std::endl;
+		  stream >> x >> y >> z;
+		  //TODO: maybe move?
+		  translation_transformations.push_back(Translation(x, y, z));
+		  child = child->NextSiblingElement("Translation");
+	  }
+	  // Get Rotations
+	  child = element->FirstChildElement("Rotation");
+	  while (child) {
+		  float angle, x, y, z;
+		  stream << child->GetText() << std::endl;
+		  stream >> angle >> x >> y >> z;
+		  //TODO: maybe move?
+		  rotation_transformations.push_back(Rotation(angle*degree_to_pi, x, y, z));
+		  child = child->NextSiblingElement("Rotation");
+	  }
+  }
+  stream.clear();
 
   // Get VertexData
   element = root->FirstChildElement("VertexData");
@@ -375,7 +417,9 @@ Scene::Scene(const std::string& file_name) {
   }
   stream.clear();
 
+
   std::vector<Shape*> objects;
+  
   // Get Meshes
   element = root->FirstChildElement("Objects");
   element = element->FirstChildElement("Mesh");
@@ -398,10 +442,42 @@ Scene::Scene(const std::string& file_name) {
     }
     stream.clear();
 
-    objects.push_back(new Mesh(material_id, -1, triangles));
+	Matrix4x4 arbitrary_transformation(true);
+	child = element->FirstChildElement("Transformations");
+	if (child) {
+		char type;
+		int index;
+		stream.clear();
+		stream << child->GetText() << std::endl;
+		while (!(stream >> type).eof()) {
+			stream >> index;
+			index--;
+			std::cout << type << index << std::endl;
+			switch (type) {
+			case 's':
+				arbitrary_transformation = scaling_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				break;
+			case 't':
+				arbitrary_transformation = translation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				break;
+			case 'r':
+				arbitrary_transformation = rotation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				break;
+			}
+		}
+		stream.clear();
+	}
+    meshes.push_back(new Mesh(material_id, -1, triangles, ArbitraryTransformation(arbitrary_transformation)));
     element = element->NextSiblingElement("Mesh");
   }
   stream.clear();
+
+  //Create base mesh instances
+  for (Mesh* mesh : meshes)
+  {
+	  std::cout << "selam" << std::endl;
+	  objects.push_back(new MeshInstance(mesh->get_material_id(), mesh->texture_id, mesh, mesh->base_transform));
+  }
 
   // Get Triangles
   element = root->FirstChildElement("Objects");
@@ -450,4 +526,10 @@ Scene::Scene(const std::string& file_name) {
   // bvh->print_debug(0);
 }
 
-Scene::~Scene() { delete bvh; }
+Scene::~Scene() {
+	delete bvh;
+	size_t size = meshes.size();
+	for (size_t i = 0; i < size; i++) {
+		delete meshes[i];
+	}
+}

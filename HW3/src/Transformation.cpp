@@ -12,6 +12,8 @@ Scaling::Scaling(float x, float y, float z) {
 	inverse_transformation_[1][1] = 1.0f / y;
 	inverse_transformation_[2][2] = 1.0f / z;
 	inverse_transformation_[3][3] = 1.0f;
+
+	normal_transformation_ = inverse_transformation_.transpose();
 }
 //
 
@@ -25,6 +27,7 @@ Translation::Translation(float x, float y, float z) {
 	inverse_transformation_[0][3] = -x;
 	inverse_transformation_[1][3] = -y;
 	inverse_transformation_[2][3] = -z;
+	normal_transformation_ = inverse_transformation_.transpose();
 }
 //
 
@@ -64,6 +67,8 @@ Rotation::Rotation(float angle, float x, float y, float z) {
 	Matrix4x4 m_transpose = m.transpose();
 	transformation_ = m_transpose * (rot * m);
 	inverse_transformation_ = m_transpose * (inv_rot * m);
+
+	normal_transformation_ = inverse_transformation_.transpose();
 }
 //
 
@@ -72,7 +77,8 @@ ArbitraryTransformation::ArbitraryTransformation(const Matrix4x4& transformation
 	transformation_ = transformation_matrix;
 	if (!(transformation_matrix.invert_matrix(inverse_transformation_)))
 	{
-		std::cerr << "NOt INVERTIBLE MATRIX!" << std::endl;
+		std::cerr << "NOT INVERTIBLE MATRIX!" << std::endl;
 		exit(-1);
 	}
+	normal_transformation_= inverse_transformation_.transpose();
 }
