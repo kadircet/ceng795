@@ -1,16 +1,17 @@
 #include "Triangle.h"
 #include "Hit_data.h"
 #include "Scene.h"
-Triangle::Triangle(const Scene* scene, int index_0, int index_1, int index_2,
+Triangle::Triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
                    int material_id)
     : index_0(index_0),
       index_1(index_1),
       index_2(index_2),
+      offset(offset),
       material_id(material_id),
       scene_(scene) {
-  const Vector3& v_0 = scene_->get_vertex_at(index_0);
-  const Vector3& v_1 = scene_->get_vertex_at(index_1);
-  const Vector3& v_2 = scene_->get_vertex_at(index_2);
+  const Vector3& v_0 = scene_->get_vertex_at(index_0+offset);
+  const Vector3& v_1 = scene_->get_vertex_at(index_1+offset);
+  const Vector3& v_2 = scene_->get_vertex_at(index_2+offset);
   normal = (v_1 - v_0).cross(v_2 - v_0).normalize();
   Vector3 min_c = v_0;
   Vector3 max_c = v_0;
@@ -37,9 +38,9 @@ bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   /*if (!ray.shadow && ray.d.dot(normal) > 0.0f) {
     return hit_data;
   }*/
-  const Vector3& v_0 = scene_->get_vertex_at(index_0);
-  const Vector3& v_1 = scene_->get_vertex_at(index_1);
-  const Vector3& v_2 = scene_->get_vertex_at(index_2);
+  const Vector3& v_0 = scene_->get_vertex_at(index_0+offset);
+  const Vector3& v_1 = scene_->get_vertex_at(index_1+offset);
+  const Vector3& v_2 = scene_->get_vertex_at(index_2+offset);
   const Vector3 a_col1 = v_0 - v_1;
   const Vector3 a_col2 = v_0 - v_2;
   const Vector3& a_col3 = ray.d;

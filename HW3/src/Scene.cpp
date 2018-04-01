@@ -129,11 +129,11 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       }
       //
       float light_distance_squared = light_distance * light_distance;
-      float diffuse_cos_theta = hit_data.normal.dot(w_i);
+      float diffuse_cos_theta = normal.dot(w_i);
       color += material.diffuse * point_light.intensity * diffuse_cos_theta /
                light_distance_squared;
       float specular_cos_theta =
-          fmax(0.0f, hit_data.normal.dot((w_0 + w_i).normalize()));
+          fmax(0.0f, normal.dot((w_0 + w_i).normalize()));
       color += material.specular * point_light.intensity *
                pow(specular_cos_theta, material.phong_exponent) /
                light_distance_squared;
@@ -432,13 +432,14 @@ Scene::Scene(const std::string& file_name) {
     material_id--;
 
     child = element->FirstChildElement("Faces");
+    int vertex_offset = child->IntAttribute("vertexOffset",0);
     stream << child->GetText() << std::endl;
     int v0_id, v1_id, v2_id;
     std::vector<Shape*> triangles;
     while (!(stream >> v0_id).eof()) {
       stream >> v1_id >> v2_id;
       triangles.push_back(
-          new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, material_id));
+          new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id));
     }
     stream.clear();
 
@@ -475,7 +476,6 @@ Scene::Scene(const std::string& file_name) {
   //Create base mesh instances
   for (Mesh* mesh : meshes)
   {
-	  std::cout << "selam" << std::endl;
 	  objects.push_back(new MeshInstance(mesh->get_material_id(), mesh->texture_id, mesh, mesh->base_transform));
   }
 
@@ -494,7 +494,7 @@ Scene::Scene(const std::string& file_name) {
     int v0_id, v1_id, v2_id;
     stream >> v0_id >> v1_id >> v2_id;
     objects.push_back(
-        new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, material_id));
+        new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, 0, material_id));
     element = element->NextSiblingElement("Triangle");
   }
 

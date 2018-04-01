@@ -100,7 +100,6 @@ bool Matrix4x4::invert_matrix(Matrix4x4& inverse_out) const
 {
 	float inv[16], m[16];
 	float det;
-	int i;
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 4; j++) {
 			m[i * 4 + j] = elements_[i][j];

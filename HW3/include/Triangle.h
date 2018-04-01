@@ -10,9 +10,10 @@ class Scene;
 class Triangle : public Shape {
  public:
   int index_0, index_1, index_2;
+  int offset;
   Vector3 normal;
   int material_id;
-  Triangle(const Scene* scene, int index_0, int index_1, int index_2,
+  Triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
            int material_id);
   bool intersect(const Ray& ray, Hit_data& hit_data) const override;
   const Bounding_box& get_bounding_box() const override {
