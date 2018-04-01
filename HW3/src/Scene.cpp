@@ -413,7 +413,7 @@ Scene::Scene(const std::string& file_name) {
   Vector3 vertex;
   while (!(stream >> vertex.x).eof()) {
     stream >> vertex.y >> vertex.z;
-    vertex_data.push_back(vertex);
+    vertex_data.push_back(Vertex(vertex));
   }
   stream.clear();
 
@@ -430,7 +430,12 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     stream >> material_id;
     material_id--;
-
+    const char* shading_mode = element->Attribute("shadingMode");
+    Triangle_shading_mode triangle_shading_mode = tsm_flat;
+    if(shading_mode && std::string(shading_mode) == std::string("smooth"))
+    {
+      triangle_shading_mode=tsm_smooth;
+    }
     child = element->FirstChildElement("Faces");
     int vertex_offset = child->IntAttribute("vertexOffset",0);
     stream << child->GetText() << std::endl;
@@ -439,7 +444,7 @@ Scene::Scene(const std::string& file_name) {
     while (!(stream >> v0_id).eof()) {
       stream >> v1_id >> v2_id;
       triangles.push_back(
-          new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id));
+          new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id,triangle_shading_mode));
     }
     stream.clear();
 
@@ -453,7 +458,6 @@ Scene::Scene(const std::string& file_name) {
 		while (!(stream >> type).eof()) {
 			stream >> index;
 			index--;
-			std::cout << type << index << std::endl;
 			switch (type) {
 			case 's':
 				arbitrary_transformation = scaling_transformations[index].get_transformation_matrix() * arbitrary_transformation;
@@ -469,10 +473,19 @@ Scene::Scene(const std::string& file_name) {
 		stream.clear();
 	}
     meshes.push_back(new Mesh(material_id, -1, triangles, ArbitraryTransformation(arbitrary_transformation)));
+    //Calculate vertex normals
+    for(Shape* shape: triangles) {
+      Triangle* triangle = (Triangle*) shape;
+      float area = triangle->get_surface_area();
+      const Vector3& surface_normal = triangle->normal;
+      vertex_data[triangle->index_0+triangle->offset].add_vertex_normal(surface_normal, area);
+      vertex_data[triangle->index_1+triangle->offset].add_vertex_normal(surface_normal, area);
+      vertex_data[triangle->index_2+triangle->offset].add_vertex_normal(surface_normal, area);
+    }
     element = element->NextSiblingElement("Mesh");
   }
   stream.clear();
-
+  
   //Create base mesh instances
   for (Mesh* mesh : meshes)
   {
@@ -494,7 +507,7 @@ Scene::Scene(const std::string& file_name) {
     int v0_id, v1_id, v2_id;
     stream >> v0_id >> v1_id >> v2_id;
     objects.push_back(
-        new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, 0, material_id));
+        new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, 0, material_id,tsm_flat));
     element = element->NextSiblingElement("Triangle");
   }
 
@@ -512,7 +525,7 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     int center;
     stream >> center;
-    const Vector3& center_of_sphere = vertex_data[center - 1];
+    const Vector3& center_of_sphere = vertex_data[center - 1].get_vertex_position();
 
     float radius;
     child = element->FirstChildElement("Radius");
@@ -523,7 +536,13 @@ Scene::Scene(const std::string& file_name) {
     element = element->NextSiblingElement("Sphere");
   }
   bvh = BVH::create_bvh(objects);
-  // bvh->print_debug(0);
+  //Finalize surface normals
+  for(Vertex& vertex: vertex_data) {
+    if(vertex.has_vertex_normal())
+    {
+      vertex.finalize_normal();
+    }
+  }
 }
 
 Scene::~Scene() {

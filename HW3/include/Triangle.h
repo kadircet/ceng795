@@ -7,14 +7,19 @@
 #include "Vector3.h"
 
 class Scene;
+enum Triangle_shading_mode {
+  tsm_flat,
+  tsm_smooth
+};
 class Triangle : public Shape {
  public:
   int index_0, index_1, index_2;
   int offset;
   Vector3 normal;
   int material_id;
+  Triangle_shading_mode triangle_shading_mode;
   Triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
-           int material_id);
+           int material_id, Triangle_shading_mode tsm);
   bool intersect(const Ray& ray, Hit_data& hit_data) const override;
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;
@@ -27,6 +32,7 @@ class Triangle : public Shape {
     std::cout << "Triangle(" << index_0 << "," << index_1 << "," << index_2
               << "), material: " << material_id << std::endl;
   }
+  float get_surface_area() const;
 
  private:
   Bounding_box bounding_box_;

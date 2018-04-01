@@ -13,6 +13,7 @@
 #include "Triangle.h"
 #include "Vector3.h"
 #include "Transformation.h"
+#include "Vertex.h"
 class Pixel;
 
 class Scene {
@@ -29,8 +30,8 @@ class Scene {
   std::vector<Camera> cameras;
   std::vector<Point_light> point_lights;
   std::vector<Material> materials;
-  std::vector<Vector3> vertex_data;
-  inline const Vector3& get_vertex_at(int index) const {
+  std::vector<Vertex> vertex_data;
+  inline const Vertex& get_vertex_at(int index) const {
     return vertex_data[index];
   }
 
