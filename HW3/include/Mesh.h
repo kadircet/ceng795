@@ -46,7 +46,7 @@ class Mesh : public Shape {
   }
 };
 
-class MeshInstance : public Shape {
+class Mesh_instance : public Shape {
 public:
 	int material_id;
 	int texture_id;
@@ -63,6 +63,7 @@ public:
 		if (mesh_->intersect(ray_local, hit_data))
 		{
 			hit_data.normal = transformation_.get_normal_transformation_matrix().multiply(hit_data.normal, true).normalize();
+      hit_data.shape = this;
 			return true;
 		}
 		return false;
@@ -73,7 +74,7 @@ public:
 		return bounding_box_;
 	}
 
-	MeshInstance(int material_id, int texture_id, const Mesh* mesh, const Transformation& transformation)
+	Mesh_instance(int material_id, int texture_id, const Mesh* mesh, const Transformation& transformation)
 		: material_id(material_id), texture_id(texture_id), mesh_(mesh), transformation_(transformation),
 		bounding_box_(Bounding_box::apply_transform(mesh->get_bounding_box(), transformation))
 	{

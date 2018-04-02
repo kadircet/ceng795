@@ -17,6 +17,7 @@ public:
 	Matrix4x4 transpose() const;
 	void make_identity();
 	bool invert_matrix(Matrix4x4& inverse_out) const;
+	bool is_identity() const;
   friend std::ostream& operator<<(std::ostream& os, const Matrix4x4& m);
 private:
 	float elements_[4][4];

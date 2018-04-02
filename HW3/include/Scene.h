@@ -7,6 +7,7 @@
 #include "Camera.h"
 #include "Material.h"
 #include "Mesh.h"
+#include "Mesh_triangle.h"
 #include "Point_light.h"
 #include "Shape.h"
 #include "Sphere.h"

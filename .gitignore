@@ -35,6 +35,7 @@ raytracer
 *.png
 *.xml
 
+scenes/
 CMakeCache.txt
 CMakeFiles
 CMakeScripts

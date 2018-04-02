@@ -222,6 +222,7 @@ Scene::Scene(const std::string& file_name) {
     stream << "0 0 0" << std::endl;
   }
   stream >> background_color.x >> background_color.y >> background_color.z;
+  debug("BackgroundColor is parsed");
 
   // Get ShadowRayEpsilon
   element = root->FirstChildElement("ShadowRayEpsilon");
@@ -231,6 +232,7 @@ Scene::Scene(const std::string& file_name) {
     stream << "0.001" << std::endl;
   }
   stream >> shadow_ray_epsilon;
+  debug("ShadowRayEpsilon is parsed");
 
   // Get MaxRecursionDepth
   element = root->FirstChildElement("MaxRecursionDepth");
@@ -240,6 +242,7 @@ Scene::Scene(const std::string& file_name) {
     stream << "0" << std::endl;
   }
   stream >> max_recursion_depth;
+  debug("MaxRecursionDepth is parsed");
 
   // Get Cameras
   element = root->FirstChildElement("Cameras");
@@ -288,6 +291,7 @@ Scene::Scene(const std::string& file_name) {
     element = element->NextSiblingElement("Camera");
   }
   stream.clear();
+  debug("Cameras are parsed");
 
   // Get Lights
   element = root->FirstChildElement("Lights");
@@ -311,6 +315,7 @@ Scene::Scene(const std::string& file_name) {
     element = element->NextSiblingElement("PointLight");
   }
   stream.clear();
+  debug("Lights are parsed");
 
   // Get Materials
   element = root->FirstChildElement("Materials");
@@ -323,6 +328,7 @@ Scene::Scene(const std::string& file_name) {
     } else {
       stream << "0 0 0" << std::endl;
     }
+
     child = element->FirstChildElement("DiffuseReflectance");
     if (child) {
       stream << child->GetText() << std::endl;
@@ -373,6 +379,7 @@ Scene::Scene(const std::string& file_name) {
     element = element->NextSiblingElement("Material");
   }
   stream.clear();
+  debug("Materials are parsed");
 
   // Get Transformations
   element = root->FirstChildElement("Transformations");
@@ -410,6 +417,7 @@ Scene::Scene(const std::string& file_name) {
 	  }
   }
   stream.clear();
+  debug("Transformations are parsed");
 
   // Get VertexData
   element = root->FirstChildElement("VertexData");
@@ -420,6 +428,7 @@ Scene::Scene(const std::string& file_name) {
     vertex_data.push_back(Vertex(vertex));
   }
   stream.clear();
+  debug("VertexData is parsed");
 
 
   std::vector<Shape*> objects;
@@ -448,38 +457,39 @@ Scene::Scene(const std::string& file_name) {
     while (!(stream >> v0_id).eof()) {
       stream >> v1_id >> v2_id;
       triangles.push_back(
-          new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id,triangle_shading_mode));
+          new Mesh_triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id,triangle_shading_mode));
     }
     stream.clear();
 
-	Matrix4x4 arbitrary_transformation(true);
-	child = element->FirstChildElement("Transformations");
-	if (child) {
-		char type;
-		int index;
-		stream.clear();
-		stream << child->GetText() << std::endl;
-		while (!(stream >> type).eof()) {
-			stream >> index;
-			index--;
-			switch (type) {
-			case 's':
-				arbitrary_transformation = scaling_transformations[index].get_transformation_matrix() * arbitrary_transformation;
-				break;
-			case 't':
-				arbitrary_transformation = translation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
-				break;
-			case 'r':
-				arbitrary_transformation = rotation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
-				break;
-			}
-		}
-		stream.clear();
-	}
-    meshes.push_back(new Mesh(material_id, -1, triangles, ArbitraryTransformation(arbitrary_transformation)));
+	  Matrix4x4 arbitrary_transformation(true);
+	  child = element->FirstChildElement("Transformations");
+	  if (child) {
+		  char type;
+		  int index;
+		  stream.clear();
+		  stream << child->GetText() << std::endl;
+		  while (!(stream >> type).eof()) {
+			  stream >> index;
+			  index--;
+			  switch (type) {
+			  case 's':
+				  arbitrary_transformation = scaling_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				  break;
+			  case 't':
+				  arbitrary_transformation = translation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				  break;
+			  case 'r':
+				  arbitrary_transformation = rotation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				  break;
+			  }
+		  }
+		  stream.clear();
+	  }
+    meshes.push_back(new Mesh(material_id, -1, triangles, Arbitrary_transformation(arbitrary_transformation)));
+    
     //Calculate vertex normals
     for(Shape* shape: triangles) {
-      Triangle* triangle = (Triangle*) shape;
+      Mesh_triangle* triangle = (Mesh_triangle*) shape;
       float area = triangle->get_surface_area();
       const Vector3& surface_normal = triangle->normal;
       vertex_data[triangle->index_0+triangle->offset].add_vertex_normal(surface_normal, area);
@@ -489,13 +499,56 @@ Scene::Scene(const std::string& file_name) {
     element = element->NextSiblingElement("Mesh");
   }
   stream.clear();
+  debug("Meshes are parsed");
   
   //Create base mesh instances
   for (Mesh* mesh : meshes)
   {
-	  objects.push_back(new MeshInstance(mesh->get_material_id(), mesh->texture_id, mesh, mesh->base_transform));
+	  objects.push_back(new Mesh_instance(mesh->get_material_id(), mesh->texture_id, mesh, mesh->base_transform));
   }
 
+  // Get MeshInstances
+  element = root->FirstChildElement("Objects");
+  element = element->FirstChildElement("MeshInstance");
+  while (element) {
+    Mesh* base_mesh = meshes[element->IntAttribute("baseMeshId") - 1];
+    child = element->FirstChildElement("Material");
+    int material_id;
+    stream << child->GetText() << std::endl;
+    stream >> material_id;
+    material_id--;
+    Matrix4x4 arbitrary_transformation(true);
+    //TODO: Check hard reset parameter
+    if (true) {
+      arbitrary_transformation = base_mesh->base_transform.get_transformation_matrix();
+    }
+    child = element->FirstChildElement("Transformations");
+    if (child) {
+      char type;
+      int index;
+      stream.clear();
+      stream << child->GetText() << std::endl;
+      while (!(stream >> type).eof()) {
+        stream >> index;
+        index--;
+        switch (type) {
+        case 's':
+          arbitrary_transformation = scaling_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+          break;
+        case 't':
+          arbitrary_transformation = translation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+          break;
+        case 'r':
+          arbitrary_transformation = rotation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+          break;
+        }
+      }
+      stream.clear();
+    }
+    objects.push_back(new Mesh_instance(material_id, -1, base_mesh, Arbitrary_transformation(arbitrary_transformation)));
+    element = element->NextSiblingElement("MeshInstance");
+  }
+  stream.clear();
   // Get Triangles
   element = root->FirstChildElement("Objects");
   element = element->FirstChildElement("Triangle");
@@ -510,10 +563,36 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     int v0_id, v1_id, v2_id;
     stream >> v0_id >> v1_id >> v2_id;
+	  Matrix4x4 arbitrary_transformation(true);
+	  child = element->FirstChildElement("Transformations");
+	  if (child) {
+		  char type;
+		  int index;
+		  stream.clear();
+		  stream << child->GetText() << std::endl;
+		  while (!(stream >> type).eof()) {
+			  stream >> index;
+			  index--;
+			  switch (type) {
+			  case 's':
+				  arbitrary_transformation = scaling_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				  break;
+			  case 't':
+				  arbitrary_transformation = translation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				  break;
+			  case 'r':
+				  arbitrary_transformation = rotation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+				  break;
+			  }
+		  }
+		  stream.clear();
+	  }
     objects.push_back(
-        new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, 0, material_id,tsm_flat));
+        new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, 0, material_id, Arbitrary_transformation(arbitrary_transformation)));
     element = element->NextSiblingElement("Triangle");
   }
+  stream.clear();
+  debug("Triangles are parsed");
 
   // Get Spheres
   element = root->FirstChildElement("Objects");
@@ -535,10 +614,36 @@ Scene::Scene(const std::string& file_name) {
     child = element->FirstChildElement("Radius");
     stream << child->GetText() << std::endl;
     stream >> radius;
-
-    objects.push_back(new Sphere(center_of_sphere, radius, material_id));
+    Matrix4x4 arbitrary_transformation(true);
+    child = element->FirstChildElement("Transformations");
+    if (child) {
+      char type;
+      int index;
+      stream.clear();
+      stream << child->GetText() << std::endl;
+      while (!(stream >> type).eof()) {
+        stream >> index;
+        index--;
+        switch (type) {
+        case 's':
+          arbitrary_transformation = scaling_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+          break;
+        case 't':
+          arbitrary_transformation = translation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+          break;
+        case 'r':
+          arbitrary_transformation = rotation_transformations[index].get_transformation_matrix() * arbitrary_transformation;
+          break;
+        }
+      }
+      stream.clear();
+    }
+    objects.push_back(new Sphere(center_of_sphere, radius, material_id, Arbitrary_transformation(arbitrary_transformation)));
     element = element->NextSiblingElement("Sphere");
   }
+  stream.clear();
+  debug("Spheres are parsed");
+
   bvh = BVH::create_bvh(objects);
   //Finalize surface normals
   for(Vertex& vertex: vertex_data) {

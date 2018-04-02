@@ -36,8 +36,8 @@ public:
 	Rotation(float angle, float x, float y, float z);
 };
 
-class ArbitraryTransformation : public Transformation {
+class Arbitrary_transformation : public Transformation {
 public:
-	ArbitraryTransformation(const Matrix4x4& transformation_matrix);
+	Arbitrary_transformation(const Matrix4x4& transformation_matrix);
 };
 #endif

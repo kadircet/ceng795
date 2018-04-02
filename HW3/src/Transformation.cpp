@@ -73,7 +73,7 @@ Rotation::Rotation(float angle, float x, float y, float z) {
 //
 
 //ArbitraryTransformation
-ArbitraryTransformation::ArbitraryTransformation(const Matrix4x4& transformation_matrix) {
+Arbitrary_transformation::Arbitrary_transformation(const Matrix4x4& transformation_matrix) {
 	transformation_ = transformation_matrix;
 	if (!(transformation_matrix.invert_matrix(inverse_transformation_)))
 	{

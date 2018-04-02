@@ -233,6 +233,25 @@ bool Matrix4x4::invert_matrix(Matrix4x4& inverse_out) const
 	return true;
 }
 
+bool Matrix4x4::is_identity() const
+{
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			if (i == j)	{
+				if (elements_[i][j] != 1.0f) {
+					return false;
+				}
+			}
+			else {
+				if (elements_[i][j] != 0.0f) {
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+}
+
 std::ostream& operator<<(std::ostream& os, const Matrix4x4& m) {
   os << "Matrix4x4(" << m[0][0] << " " << m[0][1]  << " " << m[0][2]  << " " << m[0][3] << std::endl;
   os << "          " << m[1][0] << " " << m[1][1]  << " " << m[1][2]  << " " << m[1][3] << std::endl;

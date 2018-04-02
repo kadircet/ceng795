@@ -1,20 +1,25 @@
 #pragma once
-#ifndef TRIANGLE_H_
-#define TRIANGLE_H_
+#ifndef MESH_TRIANGLE_H_
+#define MESH_TRIANGLE_H_
 #include <limits>
 #include "Ray.h"
 #include "Shape.h"
 #include "Vector3.h"
-#include "Transformation.h"
+
 class Scene;
-class Triangle : public Shape {
+enum Triangle_shading_mode {
+  tsm_flat,
+  tsm_smooth
+};
+class Mesh_triangle : public Shape {
  public:
   int index_0, index_1, index_2;
   int offset;
   Vector3 normal;
   int material_id;
-  Triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
-           int material_id, const Transformation& transformation);
+  Triangle_shading_mode triangle_shading_mode;
+  Mesh_triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
+           int material_id, Triangle_shading_mode tsm);
   bool intersect(const Ray& ray, Hit_data& hit_data) const override;
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;
@@ -24,16 +29,14 @@ class Triangle : public Shape {
     for (int index = 0; index < indentation; index++) {
       std::cout << "\t";
     }
-    std::cout << "Triangle(" << index_0 << "," << index_1 << "," << index_2
+    std::cout << "Mesh_triangle(" << index_0 << "," << index_1 << "," << index_2
               << "), material: " << material_id << std::endl;
   }
   float get_surface_area() const;
 
  private:
   Bounding_box bounding_box_;
-  Transformation transformation_;
   const Scene* scene_;
-  bool is_identity_;
   inline float determinant(const Vector3& col1, const Vector3& col2,
                            const Vector3& col3) const {
     return col1.x * (col2.y * col3.z - col3.y * col2.z) +
