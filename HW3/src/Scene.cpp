@@ -34,22 +34,39 @@ void Scene::render_image(int camera_index, Pixel* result,
   } else {
     for (int j = starting_row; j < height; j += height_increase) {
       for (int i = 0; i < width; i++) {
-        std::default_random_engine generator;
-        generator.seed(
+        std::default_random_engine ms_generator;
+        ms_generator.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_real_distribution<float> distribution(0.0, 1);
+        std::uniform_real_distribution<float> ms_distribution(0.0, 1);
+        float aperture_size = camera.get_aperture_size();
+        std::default_random_engine dof_generator;
+        dof_generator.seed(
+          std::chrono::system_clock::now().time_since_epoch().count());
+        std::uniform_real_distribution<float> dof_distribution(-1.0f, 1.0f);
         for (int x = 0; x < number_of_samples; x++) {
           for (int y = 0; y < number_of_samples; y++) {
-            float epsilon_x = distribution(generator);
-            float epsilon_y = distribution(generator);
+            Vector3 color;
+            float epsilon_x = ms_distribution(ms_generator);
+            float epsilon_y = ms_distribution(ms_generator);
             float sample_x = (x + epsilon_x) / number_of_samples;
             float sample_y = (y + epsilon_y) / number_of_samples;
-            // since calculate_ray_at adds 0.5 to the pixel number, subtracting
-            // 0.5
-            const Vector3 color = trace_ray(
+            if (aperture_size == 0.0f) {
+              // since calculate_ray_at adds 0.5 to the pixel number, subtracting
+              // 0.5
+              color = trace_ray(
                 camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5),
                 max_recursion_depth);
-
+            }
+            else {
+              float dof_epsilon_x = dof_distribution(dof_generator);
+              float dof_epsilon_y = dof_distribution(dof_generator);
+              // since calculate_ray_at adds 0.5 to the pixel number, subtracting
+              // 0.5
+              color = trace_ray(
+                camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5, dof_epsilon_x, dof_epsilon_y),
+                max_recursion_depth);
+            }
+            
             for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
               if (affected_j < 0 || affected_j >= height) {
                 continue;
@@ -258,6 +275,20 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("NearDistance");
     stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("FocusDistance");
+    if (child) {
+      stream << child->GetText() << std::endl;
+    }
+    else {
+      stream << 0 << std::endl;
+    }
+    child = element->FirstChildElement("ApertureSize");
+    if (child) {
+      stream << child->GetText() << std::endl;
+    }
+    else {
+      stream << 0.0f << std::endl;
+    }
     child = element->FirstChildElement("ImageResolution");
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("NumSamples");
@@ -271,6 +302,7 @@ Scene::Scene(const std::string& file_name) {
     Vector3 position, up, gaze;
     float near_distance;
     float near_l, near_r, near_b, near_t;
+    float focus_distance, aperture_size;
     int image_width, image_height;
     int number_of_samples;
     std::string image_name;
@@ -279,6 +311,8 @@ Scene::Scene(const std::string& file_name) {
     stream >> up.x >> up.y >> up.z;
     stream >> near_l >> near_r >> near_b >> near_t;
     stream >> near_distance;
+    stream >> focus_distance;
+    stream >> aperture_size;
     stream >> image_width >> image_height;
     stream >> number_of_samples;
     number_of_samples =(int) sqrt(number_of_samples);
@@ -286,7 +320,7 @@ Scene::Scene(const std::string& file_name) {
     stream >> image_name;
     Camera camera(up, gaze, position, number_of_samples, image_name, near_l,
                   near_r, near_b, near_t, near_distance, image_width,
-                  image_height);
+                  image_height,focus_distance,aperture_size);
     cameras.push_back(camera);
     element = element->NextSiblingElement("Camera");
   }
