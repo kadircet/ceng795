@@ -7,5 +7,6 @@ struct Area_light {
   Vector3 intensity;
   Vector3 edge_vector_1;
   Vector3 edge_vector_2;
+  Vector3 normal;
 };
 #endif

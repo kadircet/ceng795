@@ -184,7 +184,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       }
       //
       float light_distance_squared = light_distance * light_distance;
-      float intensity_cos = (-w_i).dot(area_light.edge_vector_1.cross(area_light.edge_vector_2).normalize());
+      float intensity_cos = (-w_i).dot(area_light.normal);
       if (material.diffuse != zero_vector) {
         float diffuse_cos_theta = normal.dot(w_i);
         color += material.diffuse * area_light.intensity * intensity_cos * diffuse_cos_theta /
@@ -464,6 +464,7 @@ Scene::Scene(const std::string& file_name) {
       area_light.edge_vector_1.z;
     stream >> area_light.edge_vector_2.x >> area_light.edge_vector_2.y >>
       area_light.edge_vector_2.z;
+    area_light.normal = area_light.edge_vector_1.cross(area_light.edge_vector_2).normalize();
     area_lights.push_back(area_light);
     element = element->NextSiblingElement("AreaLight");
   }
