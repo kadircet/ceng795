@@ -8,6 +8,7 @@
 #include "Material.h"
 #include "Mesh.h"
 #include "Mesh_triangle.h"
+#include "Area_light.h"
 #include "Point_light.h"
 #include "Shape.h"
 #include "Sphere.h"
@@ -29,6 +30,7 @@ class Scene {
   std::vector<Translation> translation_transformations;
   std::vector<Rotation> rotation_transformations;
   std::vector<Camera> cameras;
+  std::vector<Area_light> area_lights;
   std::vector<Point_light> point_lights;
   std::vector<Material> materials;
   std::vector<Vertex> vertex_data;
