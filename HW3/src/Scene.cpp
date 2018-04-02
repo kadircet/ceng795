@@ -162,10 +162,66 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   }
   // Reflection
   if (material.mirror != zero_vector && current_recursion_depth > 0) {
-    const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
-    Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
-    color +=
+    if (material.roughness == 0.0f) {
+      const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
+      Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
+      color +=
         material.mirror * trace_ray(mirror_ray, current_recursion_depth - 1);
+    } else {
+      /*const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
+      Vector3 t;
+      float x = std::fabs(w_r.x);
+      float y = std::fabs(w_r.y);
+      float z = std::fabs(w_r.z);
+      if (x < y && x < z) {
+        t = Vector3(1.0f, w_r.y, w_r.z);
+      }
+      else if (y < z && y < x) {
+        t = Vector3(w_r.x, 1.0f, w_r.z);
+      }
+      else {
+        t = Vector3(w_r.x, w_r.y, 1.0f);
+      }
+      //(u,w_r,v) basis
+      Vector3 u = t.cross(w_r).normalize();
+      Vector3 v = u.cross(w_r).normalize();
+      std::default_random_engine glossy_generator;
+      glossy_generator.seed(
+        std::chrono::system_clock::now().time_since_epoch().count());
+      std::uniform_real_distribution<float> glossy_distribution(-1.0f, 1.0f);
+      float epsilon_u = glossy_distribution(glossy_generator);
+      float epsilon_v = glossy_distribution(glossy_generator);
+      const Vector3 w_r_prime = (w_r + material.roughness*(u*epsilon_u + v * epsilon_v)).normalize();
+      Ray mirror_ray(intersection_point + (w_r_prime * shadow_ray_epsilon), w_r_prime);
+      color +=
+        material.mirror * trace_ray(mirror_ray, current_recursion_depth - 1);*/
+      const Vector3 w = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
+      Vector3 t;
+      float x = std::fabs(w.x);
+      float y = std::fabs(w.y);
+      float z = std::fabs(w.z);
+      if (x < y && x < z) {
+        t = Vector3(1.0f, w.y, w.z);
+      }
+      else if (y < z && y < x) {
+        t = Vector3(w.x, 1.0f, w.z);
+      }
+      else {
+        t = Vector3(w.x, w.y, 1.0f);
+      }
+      const Vector3 u = t.cross(w).normalize();
+      const Vector3 v = w.cross(u);
+      std::default_random_engine glossy_generator;
+      glossy_generator.seed(
+        std::chrono::system_clock::now().time_since_epoch().count());
+      std::uniform_real_distribution<float> glossy_distribution(0.0f, 1.0f);
+      float epsilon_u = glossy_distribution(glossy_generator);
+      float epsilon_v = glossy_distribution(glossy_generator);
+      const Vector3 r_prime = ((epsilon_u - 0.5)*material.roughness * u + (epsilon_v - 0.5)*material.roughness * v + w).normalize();
+      Ray mirror_ray(intersection_point + (r_prime * shadow_ray_epsilon), r_prime);
+      color +=
+        material.mirror * trace_ray(mirror_ray, current_recursion_depth - 1);
+    } 
   }
 
   // Refraction
@@ -381,6 +437,12 @@ Scene::Scene(const std::string& file_name) {
     } else {
       stream << "0 0 0" << std::endl;
     }
+    child = element->FirstChildElement("Roughness");
+    if (child) {
+      stream << child->GetText() << std::endl;
+    } else {
+      stream << "0" << std::endl;
+    }
     child = element->FirstChildElement("PhongExponent");
     if (child) {
       stream << child->GetText() << std::endl;
@@ -404,6 +466,7 @@ Scene::Scene(const std::string& file_name) {
     stream >> material.diffuse.x >> material.diffuse.y >> material.diffuse.z;
     stream >> material.specular.x >> material.specular.y >> material.specular.z;
     stream >> material.mirror.x >> material.mirror.y >> material.mirror.z;
+    stream >> material.roughness;
     stream >> material.phong_exponent;
     stream >> material.transparency.x >> material.transparency.y >>
         material.transparency.z;
