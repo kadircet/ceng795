@@ -34,6 +34,38 @@ Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1, int i
   max_c.z = fmax(max_c.z, v_2.z);
   bounding_box_ = Bounding_box(min_c, max_c);
 }
+
+//For plyparser
+Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
+  int material_id, Triangle_shading_mode tsm, const Vector3& v_0, const Vector3& v_1, const Vector3& v_2)
+  : index_0(index_0),
+  index_1(index_1),
+  index_2(index_2),
+  offset(offset),
+  material_id(material_id),
+  triangle_shading_mode(tsm),
+  scene_(scene) {
+  normal = (v_1 - v_0).cross(v_2 - v_0).normalize();
+  Vector3 min_c = v_0;
+  Vector3 max_c = v_0;
+
+  min_c.x = fmin(min_c.x, v_1.x);
+  min_c.y = fmin(min_c.y, v_1.y);
+  min_c.z = fmin(min_c.z, v_1.z);
+
+  max_c.x = fmax(max_c.x, v_1.x);
+  max_c.y = fmax(max_c.y, v_1.y);
+  max_c.z = fmax(max_c.z, v_1.z);
+
+  min_c.x = fmin(min_c.x, v_2.x);
+  min_c.y = fmin(min_c.y, v_2.y);
+  min_c.z = fmin(min_c.z, v_2.z);
+
+  max_c.x = fmax(max_c.x, v_2.x);
+  max_c.y = fmax(max_c.y, v_2.y);
+  max_c.z = fmax(max_c.z, v_2.z);
+  bounding_box_ = Bounding_box(min_c, max_c);
+}
 float Mesh_triangle::get_surface_area() const {
   const Vector3& v_0 = scene_->get_vertex_at(index_0+offset).get_vertex_position();
   const Vector3& v_1 = scene_->get_vertex_at(index_1+offset).get_vertex_position();

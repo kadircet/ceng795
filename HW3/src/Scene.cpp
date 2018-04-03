@@ -2,9 +2,12 @@
 #include <cmath>
 #include <random>
 #include <sstream>
+#include <fstream>
 #include <string>
 #include "Pixel.h"
 #include "tinyxml2.h"
+#include "tinyply.h"
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -595,19 +598,8 @@ Scene::Scene(const std::string& file_name) {
     {
       triangle_shading_mode=tsm_smooth;
     }
-    child = element->FirstChildElement("Faces");
-    int vertex_offset = child->IntAttribute("vertexOffset",0);
-    stream << child->GetText() << std::endl;
-    int v0_id, v1_id, v2_id;
-    std::vector<Shape*> triangles;
-    while (!(stream >> v0_id).eof()) {
-      stream >> v1_id >> v2_id;
-      triangles.push_back(
-          new Mesh_triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id,triangle_shading_mode));
-    }
-    stream.clear();
-
-	  Matrix4x4 arbitrary_transformation(true);
+    
+    Matrix4x4 arbitrary_transformation(true);
 	  child = element->FirstChildElement("Transformations");
 	  if (child) {
 		  char type;
@@ -639,17 +631,35 @@ Scene::Scene(const std::string& file_name) {
       stream >> velocity.x >> velocity.y >> velocity.z;
     }
     stream.clear();
-    meshes.push_back(new Mesh(material_id, -1, triangles, Arbitrary_transformation(arbitrary_transformation),velocity));
-    
-    //Calculate vertex normals
-    for(Shape* shape: triangles) {
-      Mesh_triangle* triangle = (Mesh_triangle*) shape;
-      float area = triangle->get_surface_area();
-      const Vector3& surface_normal = triangle->normal;
-      vertex_data[triangle->index_0+triangle->offset].add_vertex_normal(surface_normal, area);
-      vertex_data[triangle->index_1+triangle->offset].add_vertex_normal(surface_normal, area);
-      vertex_data[triangle->index_2+triangle->offset].add_vertex_normal(surface_normal, area);
+
+    std::vector<Shape*> triangles;
+
+    child = element->FirstChildElement("Faces");
+    int vertex_offset = vertex_data.size();
+    const char* ply_file = child->Attribute("plyFile");
+    if (ply_file)
+    {
+      parse_ply_tinyply(std::string(ply_file), vertex_data, triangles, vertex_offset, material_id, triangle_shading_mode);
     }
+    else {
+      vertex_offset = child->IntAttribute("vertexOffset", 0);
+      stream << child->GetText() << std::endl;
+      int v0_id, v1_id, v2_id;
+
+      while (!(stream >> v0_id).eof()) {
+        stream >> v1_id >> v2_id;
+        Mesh_triangle* triangle = new  Mesh_triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id, triangle_shading_mode);
+        float area = triangle->get_surface_area();
+        const Vector3& surface_normal = triangle->normal;
+        vertex_data[triangle->index_0 + triangle->offset].add_vertex_normal(surface_normal, area);
+        vertex_data[triangle->index_1 + triangle->offset].add_vertex_normal(surface_normal, area);
+        vertex_data[triangle->index_2 + triangle->offset].add_vertex_normal(surface_normal, area);
+        triangles.push_back(triangle);
+        triangle->print_debug(0);
+      }
+    }
+    stream.clear();
+    meshes.push_back(new Mesh(material_id, -1, triangles, Arbitrary_transformation(arbitrary_transformation),velocity));
     element = element->NextSiblingElement("Mesh");
   }
   stream.clear();
@@ -660,6 +670,7 @@ Scene::Scene(const std::string& file_name) {
   {
 	  objects.push_back(new Mesh_instance(mesh->get_material_id(), mesh->texture_id, mesh, mesh->base_transform, mesh->velocity));
   }
+  debug("Created base_mesh_instances");
 
   // Get MeshInstances
   element = root->FirstChildElement("Objects");
@@ -711,7 +722,7 @@ Scene::Scene(const std::string& file_name) {
     element = element->NextSiblingElement("MeshInstance");
   }
   stream.clear();
-
+  debug("MeshInstances are parsed");
 
   // Get Triangles
   element = root->FirstChildElement("Objects");
@@ -827,6 +838,181 @@ Scene::Scene(const std::string& file_name) {
   }
 }
 
+
+void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertices, std::vector<Shape*>& mesh_triangles, int vertex_offset, int material_id, Triangle_shading_mode tsm) const
+{
+  try
+  {
+    // Read the file and create a std::istringstream suitable
+    // for the lib -- tinyply does not perform any file i/o.
+    std::ifstream ss(filename, std::ios::binary);
+
+    if (ss.fail())
+    {
+      throw std::runtime_error("failed to open " + filename);
+    }
+    tinyply::PlyFile file;
+    file.parse_header(ss);
+    std::shared_ptr<tinyply::PlyData> ply_vertices, ply_normals, ply_faces;
+    try { ply_vertices = file.request_properties_from_element("vertex", { "x", "y", "z" }); }
+    catch (const std::exception & e) { std::cerr << "tinyply exception: " << e.what() << std::endl; }
+    try { ply_normals = file.request_properties_from_element("vertex", { "nx", "ny", "nz" }); }
+    catch (const std::exception & e) { std::cerr << "tinyply exception: " << e.what() << std::endl; }
+    try { ply_faces = file.request_properties_from_element("face", { "vertex_index" }); }
+    catch (const std::exception & e) { std::cerr << "tinyply exception: " << e.what() << std::endl; }
+    file.read(ss);
+    std::vector<Vertex> output_vertices;
+    //Process vertices
+    if (ply_vertices) {
+      std::cout << "Parsing vertices" << std::endl;
+      const size_t numVerticesBytes = ply_vertices->buffer.size_bytes();
+      if (ply_vertices->t == tinyply::Type::FLOAT32) {
+        std::vector<float> verts(ply_vertices->count * 3);
+        std::memcpy(verts.data(), ply_vertices->buffer.get(), numVerticesBytes);
+        size_t index = 0, c = ply_vertices->count;
+        for (; index < c; index++) {
+          output_vertices.push_back(Vector3(verts[3 * index], verts[3 * index + 1], verts[3 * index + 2]));
+        }
+      }
+      else if (ply_vertices->t == tinyply::Type::FLOAT64) {
+        //possible precision loss
+        std::vector<double> verts(ply_vertices->count * 3);
+        std::memcpy(verts.data(), ply_vertices->buffer.get(), numVerticesBytes);
+        size_t index = 0, c = ply_vertices->count;
+        for (; index < c; index++) {
+          output_vertices.push_back(Vector3(verts[3 * index], verts[3 * index + 1], verts[3 * index + 2]));
+        }
+      }
+      else {
+        throw std::runtime_error("Unknown vertice type");
+      }
+      for (size_t i = 0; i < output_vertices.size(); i++)
+      {
+        std::cout << output_vertices[i].get_vertex_position() << std::endl;
+      }
+    }
+    else {
+      throw std::runtime_error(filename + "contains no vertices");
+    }
+    //process normals
+    bool has_normals = false;
+    if (ply_normals) {
+      std::cout << "Parsing normals" << std::endl;
+      const size_t numNormalsBytes = ply_normals->buffer.size_bytes();
+      if (ply_normals->t == tinyply::Type::FLOAT32) {
+        std::vector<float> verts(ply_normals->count * 3);
+        std::memcpy(verts.data(), ply_normals->buffer.get(), numNormalsBytes);
+        size_t index = 0, c = ply_normals->count;
+        for (; index < c; index++) {
+          Vector3 normal(verts[3 * index], verts[3 * index + 1], verts[3 * index + 2]);
+          output_vertices[index].add_vertex_normal(normal, 1.0f);
+          output_vertices[index].finalize_normal();
+        }
+        has_normals = true;
+      }
+      else if (ply_normals->t == tinyply::Type::FLOAT64) {
+        //possible precision loss
+        std::vector<double> verts(ply_normals->count * 3);
+        std::memcpy(verts.data(), ply_normals->buffer.get(), numNormalsBytes);
+        size_t index = 0, c = ply_normals->count;
+        for (; index < c; index++) {
+          Vector3 normal(verts[3 * index], verts[3 * index + 1], verts[3 * index + 2]);
+          output_vertices[index].add_vertex_normal(normal, 1.0f);
+          output_vertices[index].finalize_normal();
+        }
+        has_normals = true;
+      }
+      else {
+        throw std::runtime_error("Unknown normal type");
+      }
+    }
+    //process faces
+    if (ply_faces)
+    {
+      std::cout << "Parsing faces" << std::endl;
+      const size_t numFacesBytes = ply_faces->buffer.size_bytes();
+      size_t index = 0, c = ply_faces->count;
+      if (ply_faces->t == tinyply::Type::INT32) {
+        bool is_triangle = c * 12 == numFacesBytes;
+        bool is_quad = c * 16 == numFacesBytes;
+        if (sizeof(int) != 4) {
+          throw std::runtime_error("sizeof(int)!=4");
+        }
+        std::vector<int> verts(numFacesBytes / 4);
+        std::memcpy(verts.data(), ply_faces->buffer.get(), numFacesBytes);
+        if (is_triangle) {
+          for (; index < c; index++) {
+            int index_0 = verts[index * 3];
+            int index_1 = verts[index * 3+1];
+            int index_2 = verts[index * 3+2];
+            const Vector3& v_0 = output_vertices[index_0].get_vertex_position();
+            const Vector3& v_1 = output_vertices[index_1].get_vertex_position();
+            const Vector3& v_2 = output_vertices[index_2].get_vertex_position();
+            mesh_triangles.push_back(new Mesh_triangle(this, index_0, index_1, index_2, vertex_offset, material_id, tsm, v_0, v_1, v_2));
+            if (!has_normals) {
+              Mesh_triangle* triangle = (Mesh_triangle*)*(mesh_triangles.rbegin());
+              float area = triangle->get_surface_area();
+              const Vector3& surface_normal = triangle->normal;
+              output_vertices[triangle->index_0].add_vertex_normal(surface_normal, area);
+              output_vertices[triangle->index_1].add_vertex_normal(surface_normal, area);
+              output_vertices[triangle->index_2].add_vertex_normal(surface_normal, area);
+            }
+          }
+
+        }
+        else if (is_quad) {
+          for (; index < c; index++) {
+            int index_0 = verts[index * 4];
+            int index_1 = verts[index * 4 + 1];
+            int index_2 = verts[index * 4 + 2];
+            int index_3 = verts[index * 4 + 3];
+            const Vector3& v_0 = output_vertices[index_0].get_vertex_position();
+            const Vector3& v_1 = output_vertices[index_1].get_vertex_position();
+            const Vector3& v_2 = output_vertices[index_2].get_vertex_position();
+            const Vector3& v_3 = output_vertices[index_3].get_vertex_position();
+            mesh_triangles.push_back(new Mesh_triangle(this, index_0, index_1, index_3, vertex_offset, material_id, tsm, v_0, v_1, v_3));
+            mesh_triangles.push_back(new Mesh_triangle(this, index_2, index_3, index_1, vertex_offset, material_id, tsm, v_2, v_3, v_1));
+            if (!has_normals) {
+              {
+                Mesh_triangle* triangle1 = (Mesh_triangle*) *(mesh_triangles.rbegin()++);
+                float area = (v_1 - v_0).cross(v_3 - v_0).length() / 2;
+                const Vector3& surface_normal = triangle1->normal;
+                output_vertices[triangle1->index_0].add_vertex_normal(surface_normal, area);
+                output_vertices[triangle1->index_1].add_vertex_normal(surface_normal, area);
+                output_vertices[triangle1->index_2].add_vertex_normal(surface_normal, area);
+                triangle1->print_debug(0);
+              }
+              {
+                Mesh_triangle* triangle2 = (Mesh_triangle*)*(mesh_triangles.rbegin());
+                float area = (v_3 - v_2).cross(v_1 - v_2).length() / 2;
+                const Vector3& surface_normal = triangle2->normal;
+                output_vertices[triangle2->index_0].add_vertex_normal(surface_normal, area);
+                output_vertices[triangle2->index_1].add_vertex_normal(surface_normal, area);
+                output_vertices[triangle2->index_2].add_vertex_normal(surface_normal, area);
+                triangle2->print_debug(0);
+              }
+            }
+          }
+        }
+        else {
+          throw std::runtime_error("This parser doesn't support hybrid files");
+        }
+      }
+      else {
+        throw std::runtime_error("check vertex_index type type");
+      }
+    }
+    else {
+      throw std::runtime_error(filename + "contains no faces");
+    }
+    vertices.insert(vertices.end(), output_vertices.begin(), output_vertices.end());
+}
+  catch (const std::exception & e)
+  {
+    std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
+    exit(-1);
+  }
+}
 Scene::~Scene() {
 	delete bvh;
 	size_t size = meshes.size();

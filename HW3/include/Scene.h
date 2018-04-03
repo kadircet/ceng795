@@ -47,5 +47,6 @@ class Scene {
   Vector3 trace_ray(const Ray& ray, int max_recursion_depth) const;
   bool refract_ray(const Vector3& direction_unit, const Vector3& normal,
                    const float refraction_index, Vector3& transmitted_d) const;
+  void parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertices, std::vector<Shape*>& mesh_triangles, int vertex_offset, int material_id, Triangle_shading_mode tsm) const;
 };
 #endif

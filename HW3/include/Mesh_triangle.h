@@ -20,6 +20,8 @@ class Mesh_triangle : public Shape {
   Triangle_shading_mode triangle_shading_mode;
   Mesh_triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
            int material_id, Triangle_shading_mode tsm);
+  Mesh_triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
+    int material_id, Triangle_shading_mode tsm, const Vector3& v0, const Vector3& v1, const Vector3& v2);
   bool intersect(const Ray& ray, Hit_data& hit_data) const override;
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;
@@ -30,7 +32,7 @@ class Mesh_triangle : public Shape {
       std::cout << "\t";
     }
     std::cout << "Mesh_triangle(" << index_0 << "," << index_1 << "," << index_2
-              << "), material: " << material_id << std::endl;
+              << "), material: " << material_id << "normal: " <<normal << std::endl;
   }
   float get_surface_area() const;
 

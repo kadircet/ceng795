@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-include_directories(include)
-file(GLOB SOURCES "src/*.cpp")
-file(GLOB HEADERS "include/*.h")
-
+include_directories("include")
+include_directories("include/externals")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE HEADERS "include/*.h")
 add_executable(raytracer ${SOURCES} ${HEADERS})
