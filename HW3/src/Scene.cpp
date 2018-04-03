@@ -141,6 +141,11 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     // point lights
     for (const Point_light& point_light : point_lights) {
       // Shadow check
+      bool has_diffuse = material.diffuse != zero_vector;
+      bool has_specular = material.specular != zero_vector;
+      if (!has_diffuse && !has_specular) {
+        continue;
+      }
       const Vector3 light_distance_vec =
           point_light.position - intersection_point;
       const Vector3 w_i = light_distance_vec.normalize();
@@ -156,12 +161,12 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       }
       //
       float light_distance_squared = light_distance * light_distance;
-      if(material.diffuse != zero_vector) {
+      if(has_diffuse) {
         float diffuse_cos_theta = normal.dot(w_i);
         color += material.diffuse * point_light.intensity * diffuse_cos_theta /
                  light_distance_squared;
       }
-      if(material.specular != zero_vector) {
+      if(has_specular) {
         float specular_cos_theta =
           fmax(0.0f, normal.dot((w_0 + w_i).normalize()));
         color += material.specular * point_light.intensity *
@@ -171,6 +176,11 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     }
     // area lights
     for (const Area_light& area_light : area_lights) {
+      bool has_diffuse = material.diffuse != zero_vector;
+      bool has_specular = material.specular != zero_vector;
+      if (!has_diffuse && !has_specular) {
+        continue;
+      }
       std::default_random_engine area_light_generator;
       area_light_generator.seed(
         std::chrono::system_clock::now().time_since_epoch().count());
@@ -195,12 +205,12 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       //
       float light_distance_squared = light_distance * light_distance;
       float intensity_cos = (-w_i).dot(area_light.normal);
-      if (material.diffuse != zero_vector) {
+      if (has_diffuse) {
         float diffuse_cos_theta = normal.dot(w_i);
         color += material.diffuse * area_light.intensity * intensity_cos * diffuse_cos_theta /
           light_distance_squared;
       }
-      if (material.specular != zero_vector) {
+      if (has_specular) {
         float specular_cos_theta =
           fmax(0.0f, normal.dot((w_0 + w_i).normalize()));
         color += material.specular * area_light.intensity * intensity_cos *
