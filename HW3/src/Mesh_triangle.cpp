@@ -37,15 +37,15 @@ Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1, int i
 
 //For plyparser
 Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
-  int material_id, Triangle_shading_mode tsm, const Vector3& v_0, const Vector3& v_1, const Vector3& v_2)
+  int material_id, Triangle_shading_mode tsm, const Vector3& v_0, const Vector3& v_1, const Vector3& v_2, const Vector3& normal)
   : index_0(index_0),
   index_1(index_1),
   index_2(index_2),
   offset(offset),
   material_id(material_id),
   triangle_shading_mode(tsm),
+  normal(normal),
   scene_(scene) {
-  normal = (v_1 - v_0).cross(v_2 - v_0).normalize();
   Vector3 min_c = v_0;
   Vector3 max_c = v_0;
 
