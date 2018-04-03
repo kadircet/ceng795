@@ -73,10 +73,7 @@ float Mesh_triangle::get_surface_area() const {
   return (v_1-v_0).cross(v_2-v_0).length() / 2;
 }
 bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
-  // May hold a_col1 and acol_2 as member?
-  /*if (!ray.shadow && ray.d.dot(normal) > 0.0f) {
-    return hit_data;
-  }*/
+
   const Vertex& vertex_0 = scene_->get_vertex_at(index_0+offset);
   const Vertex& vertex_1 = scene_->get_vertex_at(index_1+offset);
   const Vertex& vertex_2 = scene_->get_vertex_at(index_2+offset);

@@ -710,10 +710,10 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     stream >> material_id;
     material_id--;
-    Matrix4x4 arbitrary_transformation(true);
-    //TODO: Check hard reset parameter
-    if (true) {
-      arbitrary_transformation = base_mesh->base_transform.get_transformation_matrix();
+    Matrix4x4 arbitrary_transformation = base_mesh->base_transform.get_transformation_matrix();
+    const char* reset_transform = element->Attribute("resetTransform");
+    if (reset_transform && std::string(reset_transform) == std::string("true")) {
+      arbitrary_transformation.make_identity();
     }
     child = element->FirstChildElement("Transformations");
     if (child) {
@@ -903,7 +903,7 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
     std::vector<Vertex> output_vertices;
     //Process vertices
     if (ply_vertices) {
-      std::cout << "Parsing vertices" << std::endl;
+      //std::cout << "Parsing vertices" << std::endl;
       const size_t numVerticesBytes = ply_vertices->buffer.size_bytes();
       if (ply_vertices->t == tinyply::Type::FLOAT32) {
         std::vector<float> verts(ply_vertices->count * 3);
@@ -932,7 +932,7 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
     //process normals
     bool has_normals = false;
     if (ply_normals) {
-      std::cout << "Parsing normals" << std::endl;
+      //std::cout << "Parsing normals" << std::endl;
       const size_t numNormalsBytes = ply_normals->buffer.size_bytes();
       if (ply_normals->t == tinyply::Type::FLOAT32) {
         std::vector<float> verts(ply_normals->count * 3);
@@ -964,7 +964,7 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
     //process faces
     if (ply_faces)
     {
-      std::cout << "Parsing faces" << std::endl;
+      //std::cout << "Parsing faces" << std::endl;
       const size_t numFacesBytes = ply_faces->buffer.size_bytes();
       size_t index = 0, c = ply_faces->count;
       if (ply_faces->t == tinyply::Type::INT32) {
@@ -986,7 +986,7 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
             mesh_triangles.push_back(new Mesh_triangle(this, index_0, index_1, index_2, vertex_offset, material_id, tsm, v_0, v_1, v_2));
             if (!has_normals) {
               Mesh_triangle* triangle = (Mesh_triangle*)*(mesh_triangles.rbegin());
-              float area = triangle->get_surface_area();
+              float area = (v_1 - v_0).cross(v_2 - v_0).length() / 2;
               const Vector3& surface_normal = triangle->normal;
               output_vertices[triangle->index_0].add_vertex_normal(surface_normal, area);
               output_vertices[triangle->index_1].add_vertex_normal(surface_normal, area);
