@@ -38,11 +38,18 @@ void Scene::render_image(int camera_index, Pixel* result,
         ms_generator.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> ms_distribution(0.0, 1);
-        float aperture_size = camera.get_aperture_size();
+        
         std::default_random_engine dof_generator;
         dof_generator.seed(
           std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> dof_distribution(-1.0f, 1.0f);
+
+        std::default_random_engine time_generator;
+        time_generator.seed(
+          std::chrono::system_clock::now().time_since_epoch().count());
+        std::uniform_real_distribution<float> time_distribution(0.0f, 1.0f);
+
+        float aperture_size = camera.get_aperture_size();
         for (int x = 0; x < number_of_samples; x++) {
           for (int y = 0; y < number_of_samples; y++) {
             Vector3 color;
@@ -54,7 +61,7 @@ void Scene::render_image(int camera_index, Pixel* result,
               // since calculate_ray_at adds 0.5 to the pixel number, subtracting
               // 0.5
               color = trace_ray(
-                camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5),
+                camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5, time_distribution(time_generator)),
                 max_recursion_depth);
             }
             else {
@@ -63,7 +70,7 @@ void Scene::render_image(int camera_index, Pixel* result,
               // since calculate_ray_at adds 0.5 to the pixel number, subtracting
               // 0.5
               color = trace_ray(
-                camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5, dof_epsilon_x, dof_epsilon_y),
+                camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5, dof_epsilon_x, dof_epsilon_y, time_distribution(time_generator)),
                 max_recursion_depth);
             }
             
@@ -135,7 +142,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
           point_light.position - intersection_point;
       const Vector3 w_i = light_distance_vec.normalize();
       float light_distance = light_distance_vec.length();
-      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, r_shadow);
+      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, r_shadow, ray.time);
       Hit_data shadow_hit_data;
       shadow_hit_data.t = std::numeric_limits<float>::infinity();
       shadow_hit_data.shape = NULL;
@@ -173,7 +180,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         position - intersection_point;
       const Vector3 w_i = light_distance_vec.normalize();
       float light_distance = light_distance_vec.length();
-      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, r_shadow);
+      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, r_shadow, ray.time);
       Hit_data shadow_hit_data;
       shadow_hit_data.t = std::numeric_limits<float>::infinity();
       shadow_hit_data.shape = NULL;
@@ -203,7 +210,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   if (material.mirror != zero_vector && current_recursion_depth > 0) {
     if (material.roughness == 0.0f) {
       const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
-      Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection);
+      Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection, ray.time);
       color +=
         material.mirror * trace_ray(mirror_ray, current_recursion_depth - 1);
     } else {
@@ -235,7 +242,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       float epsilon_u = glossy_distribution_u(glossy_generator_u);
       float epsilon_v = glossy_distribution_v(glossy_generator_v);
       const Vector3 w_r_prime = (w_r + material.roughness*(u*epsilon_u + v * epsilon_v)).normalize();
-      Ray mirror_ray(intersection_point + (w_r_prime * shadow_ray_epsilon), w_r_prime, r_reflection);
+      Ray mirror_ray(intersection_point + (w_r_prime * shadow_ray_epsilon), w_r_prime, r_reflection, ray.time);
       color +=
         material.mirror * trace_ray(mirror_ray, current_recursion_depth - 1);
     } 
@@ -271,17 +278,17 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     }
 
     if (total_internal_reflection) {
-      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection);
+      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection, ray.time);
       reflection_ray.in_medium = true;
       color += k*trace_ray(reflection_ray, current_recursion_depth - 1);
     } else {
       float r_0 = ((n - 1) * (n - 1)) / ((n + 1) * (n + 1));
       float r = r_0 + (1 - r_0) * pow(1.0f - cos_theta, 5);
-      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection);
+      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection, ray.time);
       reflection_ray.in_medium = !entering_ray;
       Ray transmission_ray(
           intersection_point + (transmission_direction * shadow_ray_epsilon),
-          transmission_direction, r_refraction);
+          transmission_direction, r_refraction, ray.time);
       transmission_ray.in_medium = entering_ray;
       color += k * (r * trace_ray(reflection_ray, current_recursion_depth - 1) +
                     (1 - r) * trace_ray(transmission_ray,
@@ -624,7 +631,15 @@ Scene::Scene(const std::string& file_name) {
 		  }
 		  stream.clear();
 	  }
-    meshes.push_back(new Mesh(material_id, -1, triangles, Arbitrary_transformation(arbitrary_transformation)));
+    stream.clear();
+    Vector3 velocity(0.0f);
+    child = element->FirstChildElement("MotionBlur");
+    if (child) {
+      stream << child->GetText() << std::endl;
+      stream >> velocity.x >> velocity.y >> velocity.z;
+    }
+    stream.clear();
+    meshes.push_back(new Mesh(material_id, -1, triangles, Arbitrary_transformation(arbitrary_transformation),velocity));
     
     //Calculate vertex normals
     for(Shape* shape: triangles) {
@@ -643,7 +658,7 @@ Scene::Scene(const std::string& file_name) {
   //Create base mesh instances
   for (Mesh* mesh : meshes)
   {
-	  objects.push_back(new Mesh_instance(mesh->get_material_id(), mesh->texture_id, mesh, mesh->base_transform));
+	  objects.push_back(new Mesh_instance(mesh->get_material_id(), mesh->texture_id, mesh, mesh->base_transform, mesh->velocity));
   }
 
   // Get MeshInstances
@@ -684,10 +699,20 @@ Scene::Scene(const std::string& file_name) {
       }
       stream.clear();
     }
-    objects.push_back(new Mesh_instance(material_id, -1, base_mesh, Arbitrary_transformation(arbitrary_transformation)));
+    stream.clear();
+    Vector3 velocity(0.0f);
+    child = element->FirstChildElement("MotionBlur");
+    if (child) {
+      stream << child->GetText() << std::endl;
+      stream >> velocity.x >> velocity.y >> velocity.z;
+    }
+    stream.clear();
+    objects.push_back(new Mesh_instance(material_id, -1, base_mesh, Arbitrary_transformation(arbitrary_transformation), velocity));
     element = element->NextSiblingElement("MeshInstance");
   }
   stream.clear();
+
+
   // Get Triangles
   element = root->FirstChildElement("Objects");
   element = element->FirstChildElement("Triangle");
@@ -726,6 +751,7 @@ Scene::Scene(const std::string& file_name) {
 		  }
 		  stream.clear();
 	  }
+    //No motion blur support for primitive triangles, yet
     objects.push_back(
         new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, 0, material_id, Arbitrary_transformation(arbitrary_transformation)));
     element = element->NextSiblingElement("Triangle");
@@ -777,7 +803,15 @@ Scene::Scene(const std::string& file_name) {
       }
       stream.clear();
     }
-    objects.push_back(new Sphere(center_of_sphere, radius, material_id, Arbitrary_transformation(arbitrary_transformation)));
+    stream.clear();
+    Vector3 velocity(0.0f);
+    child = element->FirstChildElement("MotionBlur");
+    if (child) {
+      stream << child->GetText() << std::endl;
+      stream >> velocity.x >> velocity.y >> velocity.z;
+    }
+    stream.clear();
+    objects.push_back(new Sphere(center_of_sphere, radius, material_id, Arbitrary_transformation(arbitrary_transformation), velocity));
     element = element->NextSiblingElement("Sphere");
   }
   stream.clear();

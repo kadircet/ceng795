@@ -14,8 +14,10 @@ class Ray {
   Vector3 d;
   bool in_medium;
   Ray_type ray_type;
-  Ray(const Vector3& origin, const Vector3& direction, Ray_type ray_type)
-      : o(origin), d(direction), in_medium(false), ray_type(ray_type) {}
+  //Between -1.0f and 1.0f
+  float time;
+  Ray(const Vector3& origin, const Vector3& direction, Ray_type ray_type, float time = 0.0f)
+      : o(origin), d(direction), in_medium(false), ray_type(ray_type), time(time) {}
   inline Vector3 point_at(float t) const { return o + (t * d); }
 };
 #endif
