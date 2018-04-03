@@ -82,7 +82,7 @@ bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   else {
     const Matrix4x4& inverse_transformation = transformation_.get_inverse_transformation_matrix();
     const Ray ray_local(inverse_transformation.multiply(ray.o),
-      inverse_transformation.multiply(ray.d, true));
+      inverse_transformation.multiply(ray.d, true), ray.ray_type);
 	  const Vector3& a_col3 = ray_local.d;
 	  const float det_a = determinant(a_col1, a_col2, a_col3);
 	  if (det_a == 0.0f) {

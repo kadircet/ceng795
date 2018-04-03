@@ -135,7 +135,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
           point_light.position - intersection_point;
       const Vector3 w_i = light_distance_vec.normalize();
       float light_distance = light_distance_vec.length();
-      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i);
+      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, r_shadow);
       Hit_data shadow_hit_data;
       shadow_hit_data.t = std::numeric_limits<float>::infinity();
       shadow_hit_data.shape = NULL;
@@ -173,7 +173,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         position - intersection_point;
       const Vector3 w_i = light_distance_vec.normalize();
       float light_distance = light_distance_vec.length();
-      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i);
+      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i, r_shadow);
       Hit_data shadow_hit_data;
       shadow_hit_data.t = std::numeric_limits<float>::infinity();
       shadow_hit_data.shape = NULL;
@@ -203,7 +203,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   if (material.mirror != zero_vector && current_recursion_depth > 0) {
     if (material.roughness == 0.0f) {
       const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
-      Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
+      Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection);
       color +=
         material.mirror * trace_ray(mirror_ray, current_recursion_depth - 1);
     } else {
@@ -235,7 +235,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       float epsilon_u = glossy_distribution_u(glossy_generator_u);
       float epsilon_v = glossy_distribution_v(glossy_generator_v);
       const Vector3 w_r_prime = (w_r + material.roughness*(u*epsilon_u + v * epsilon_v)).normalize();
-      Ray mirror_ray(intersection_point + (w_r_prime * shadow_ray_epsilon), w_r_prime);
+      Ray mirror_ray(intersection_point + (w_r_prime * shadow_ray_epsilon), w_r_prime, r_reflection);
       color +=
         material.mirror * trace_ray(mirror_ray, current_recursion_depth - 1);
     } 
@@ -271,17 +271,17 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     }
 
     if (total_internal_reflection) {
-      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
+      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection);
       reflection_ray.in_medium = true;
       color += k*trace_ray(reflection_ray, current_recursion_depth - 1);
     } else {
       float r_0 = ((n - 1) * (n - 1)) / ((n + 1) * (n + 1));
       float r = r_0 + (1 - r_0) * pow(1.0f - cos_theta, 5);
-      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
+      Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r, r_reflection);
       reflection_ray.in_medium = !entering_ray;
       Ray transmission_ray(
           intersection_point + (transmission_direction * shadow_ray_epsilon),
-          transmission_direction);
+          transmission_direction, r_refraction);
       transmission_ray.in_medium = entering_ray;
       color += k * (r * trace_ray(reflection_ray, current_recursion_depth - 1) +
                     (1 - r) * trace_ray(transmission_ray,

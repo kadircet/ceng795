@@ -67,7 +67,7 @@ class Sphere : public Shape {
     else {
       const Matrix4x4& inverse_transformation = transformation_.get_inverse_transformation_matrix();
       const Ray ray_local(inverse_transformation.multiply(ray.o),
-        inverse_transformation.multiply(ray.d, true));
+        inverse_transformation.multiply(ray.d, true), ray.ray_type);
       Vector3 center_to_origin = ray_local.o - center;
       const float a = ray_local.d.dot(ray_local.d);
       const float b = 2 * ray_local.d.dot(center_to_origin);

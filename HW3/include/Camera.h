@@ -36,14 +36,14 @@ class Camera {
     // For now, origin is top_left, right handed camera
     const Vector3 s =
         top_left_corner + (x + 0.5f) * s_u_constant - (y + 0.5f) * s_v_constant;
-    return Ray(e, (s - e).normalize());
+    return Ray(e, (s - e).normalize(), r_primary);
   }
   Ray calculate_ray_at(float x, float y, float x_offset_ratio, float y_offset_ratio) const {
     // For now, origin is top_left, right handed camera
     Vector3 new_e = e + (u * x_offset_ratio + v * y_offset_ratio)*aperture_size_*0.5f;
     const Vector3 s =
       top_left_corner + (x + 0.5f) * s_u_constant - (y + 0.5f) * s_v_constant;
-    return Ray(new_e, (s - new_e).normalize());
+    return Ray(new_e, (s - new_e).normalize(), r_primary);
   }
   const Image_plane& get_image_plane() const { return image_plane_; }
   const std::string& get_filename() const { return filename_; }

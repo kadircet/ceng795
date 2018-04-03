@@ -59,7 +59,7 @@ public:
 
 		const Matrix4x4& inverse_tranformation = transformation_.get_inverse_transformation_matrix();
 		Ray ray_local(inverse_tranformation.multiply(ray.o),
-			inverse_tranformation.multiply(ray.d, true));
+			inverse_tranformation.multiply(ray.d, true), ray.ray_type);
 		if (mesh_->intersect(ray_local, hit_data))
 		{
 			hit_data.normal = transformation_.get_normal_transformation_matrix().multiply(hit_data.normal, true).normalize();
