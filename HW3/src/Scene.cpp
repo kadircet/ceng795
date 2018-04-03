@@ -31,7 +31,7 @@ void Scene::render_image(int camera_index, Pixel* result,
       for (int i = 0; i < width; i++) {
         Vector3 color =
             trace_ray(camera.calculate_ray_at(i, j), max_recursion_depth);
-        result[j * width + i].add_color(color, 1);
+        result[j * width + i].add_color(color, 1.0f);
       }
     }
   } else {
@@ -40,7 +40,7 @@ void Scene::render_image(int camera_index, Pixel* result,
         std::default_random_engine ms_generator;
         ms_generator.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_real_distribution<float> ms_distribution(0.0, 1);
+        std::uniform_real_distribution<float> ms_distribution(0.0f, 1.0f);
         
         std::default_random_engine dof_generator;
         dof_generator.seed(
@@ -64,7 +64,7 @@ void Scene::render_image(int camera_index, Pixel* result,
               // since calculate_ray_at adds 0.5 to the pixel number, subtracting
               // 0.5
               color = trace_ray(
-                camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5, time_distribution(time_generator)),
+                camera.calculate_ray_at(i + sample_x - 0.5f, j + sample_y - 0.5f, time_distribution(time_generator)),
                 max_recursion_depth);
             }
             else {
@@ -73,7 +73,7 @@ void Scene::render_image(int camera_index, Pixel* result,
               // since calculate_ray_at adds 0.5 to the pixel number, subtracting
               // 0.5
               color = trace_ray(
-                camera.calculate_ray_at(i + sample_x - 0.5, j + sample_y - 0.5, dof_epsilon_x, dof_epsilon_y, time_distribution(time_generator)),
+                camera.calculate_ray_at(i + sample_x - 0.5f, j + sample_y - 0.5f, dof_epsilon_x, dof_epsilon_y, time_distribution(time_generator)),
                 max_recursion_depth);
             }
             
@@ -302,6 +302,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
 }
 
 Scene::Scene(const std::string& file_name) {
+  const float degree_to_pi = M_PI / 180.0f;
   tinyxml2::XMLDocument file;
   std::stringstream stream;
 
@@ -348,13 +349,19 @@ Scene::Scene(const std::string& file_name) {
   element = root->FirstChildElement("Cameras");
   element = element->FirstChildElement("Camera");
   while (element) {
+    Vector3 position;
+    Vector3 up;
+    Vector3 gaze;
+    float near_distance;
+    float near_l, near_r, near_b, near_t;
+    float focus_distance, aperture_size;
+    int image_width, image_height;
+    int number_of_samples;
+    std::string image_name;
+   
     auto child = element->FirstChildElement("Position");
     stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("Gaze");
-    stream << child->GetText() << std::endl;
     child = element->FirstChildElement("Up");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("NearPlane");
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("NearDistance");
     stream << child->GetText() << std::endl;
@@ -377,34 +384,56 @@ Scene::Scene(const std::string& file_name) {
     child = element->FirstChildElement("NumSamples");
     if (child) {
       stream << child->GetText() << std::endl;
-    } else {
+    }
+    else {
       stream << 1 << std::endl;
     }
     child = element->FirstChildElement("ImageName");
     stream << child->GetText() << std::endl;
-    Vector3 position, up, gaze;
-    float near_distance;
-    float near_l, near_r, near_b, near_t;
-    float focus_distance, aperture_size;
-    int image_width, image_height;
-    int number_of_samples;
-    std::string image_name;
+
     stream >> position.x >> position.y >> position.z;
-    stream >> gaze.x >> gaze.y >> gaze.z;
     stream >> up.x >> up.y >> up.z;
-    stream >> near_l >> near_r >> near_b >> near_t;
     stream >> near_distance;
     stream >> focus_distance;
     stream >> aperture_size;
     stream >> image_width >> image_height;
     stream >> number_of_samples;
-    number_of_samples =(int) sqrt(number_of_samples);
+    number_of_samples = (int)sqrt(number_of_samples);
     if (number_of_samples <= 0) number_of_samples = 1;
     stream >> image_name;
-    Camera camera(up, gaze, position, number_of_samples, image_name, near_l,
-                  near_r, near_b, near_t, near_distance, image_width,
-                  image_height,focus_distance,aperture_size);
-    cameras.push_back(camera);
+
+    const char* camera_type = element->Attribute("type");
+    if (camera_type && std::string(camera_type) == std::string("simple"))
+    {
+      child = element->FirstChildElement("GazePoint");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("FovY");
+      stream << child->GetText() << std::endl;
+
+      Vector3 gaze_point; 
+      float FovY;
+      stream >> gaze_point.x >> gaze_point.y >> gaze_point.z;
+      stream >> FovY;
+      float half_y_radian = degree_to_pi*FovY / 2;
+      near_t = tanf(half_y_radian) * near_distance;
+      float aspect_ratio = 1.0f*image_width / image_height;
+      near_b = -near_t;
+      near_r = near_t;
+      near_l = -near_t;
+      gaze = (gaze_point - position).normalize();
+      
+    }
+    else {
+      child = element->FirstChildElement("Gaze");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("NearPlane");
+      stream << child->GetText() << std::endl;
+      stream >> gaze.x >> gaze.y >> gaze.z;
+      stream >> near_l >> near_r >> near_b >> near_t;
+    }
+    cameras.push_back(Camera(up, gaze, position, number_of_samples, image_name, near_l,
+      near_r, near_b, near_t, near_distance, image_width,
+      image_height, focus_distance, aperture_size));
     element = element->NextSiblingElement("Camera");
   }
   stream.clear();
@@ -532,7 +561,7 @@ Scene::Scene(const std::string& file_name) {
 
   // Get Transformations
   element = root->FirstChildElement("Transformations");
-  const float degree_to_pi = M_PI / 180.0f;
+  
   if (element) {
 	  // Get Scalings
 	  child = element->FirstChildElement("Scaling");
@@ -655,7 +684,6 @@ Scene::Scene(const std::string& file_name) {
         vertex_data[triangle->index_1 + triangle->offset].add_vertex_normal(surface_normal, area);
         vertex_data[triangle->index_2 + triangle->offset].add_vertex_normal(surface_normal, area);
         triangles.push_back(triangle);
-        triangle->print_debug(0);
       }
     }
     stream.clear();
@@ -856,10 +884,21 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
     std::shared_ptr<tinyply::PlyData> ply_vertices, ply_normals, ply_faces;
     try { ply_vertices = file.request_properties_from_element("vertex", { "x", "y", "z" }); }
     catch (const std::exception & e) { std::cerr << "tinyply exception: " << e.what() << std::endl; }
+    //vertice normals
     try { ply_normals = file.request_properties_from_element("vertex", { "nx", "ny", "nz" }); }
     catch (const std::exception & e) { std::cerr << "tinyply exception: " << e.what() << std::endl; }
-    try { ply_faces = file.request_properties_from_element("face", { "vertex_index" }); }
-    catch (const std::exception & e) { std::cerr << "tinyply exception: " << e.what() << std::endl; }
+
+    try { 
+      ply_faces = file.request_properties_from_element("face", { "vertex_index" }); 
+    }
+    catch (const std::exception & e) { 
+      try {
+        ply_faces = file.request_properties_from_element("face", { "vertex_indices" });
+      } catch (const std::exception & e) {
+        std::cerr << "tinyply exception: " << e.what() << std::endl;
+      }
+      std::cerr << "tinyply exception: " << e.what() << std::endl; 
+    }
     file.read(ss);
     std::vector<Vertex> output_vertices;
     //Process vertices
@@ -885,10 +924,6 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
       }
       else {
         throw std::runtime_error("Unknown vertice type");
-      }
-      for (size_t i = 0; i < output_vertices.size(); i++)
-      {
-        std::cout << output_vertices[i].get_vertex_position() << std::endl;
       }
     }
     else {
@@ -980,7 +1015,6 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
                 output_vertices[triangle1->index_0].add_vertex_normal(surface_normal, area);
                 output_vertices[triangle1->index_1].add_vertex_normal(surface_normal, area);
                 output_vertices[triangle1->index_2].add_vertex_normal(surface_normal, area);
-                triangle1->print_debug(0);
               }
               {
                 Mesh_triangle* triangle2 = (Mesh_triangle*)*(mesh_triangles.rbegin());
@@ -989,7 +1023,6 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
                 output_vertices[triangle2->index_0].add_vertex_normal(surface_normal, area);
                 output_vertices[triangle2->index_1].add_vertex_normal(surface_normal, area);
                 output_vertices[triangle2->index_2].add_vertex_normal(surface_normal, area);
-                triangle2->print_debug(0);
               }
             }
           }
