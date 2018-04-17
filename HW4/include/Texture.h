@@ -1,6 +1,9 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
-//#define cimg_use_jpeg
+#ifndef WIN32
+  #define cimg_use_jpeg
+#endif
+#define cimg_display 0
 #include "CImg.h"
 #include "Vector3.h"
 #include <string>
