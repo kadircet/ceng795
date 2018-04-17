@@ -2,12 +2,13 @@
 #include "Hit_data.h"
 #include "Scene.h"
 Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
-                   int material_id, Triangle_shading_mode tsm)
+                   int material_id, int texture_id, Triangle_shading_mode tsm)
     : index_0(index_0),
       index_1(index_1),
       index_2(index_2),
       offset(offset),
       material_id(material_id),
+      texture_id(texture_id),
       triangle_shading_mode(tsm),
       scene_(scene) {
   const Vector3& v_0 = scene_->get_vertex_at(index_0+offset).get_vertex_position();
@@ -37,12 +38,13 @@ Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1, int i
 
 //For plyparser
 Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
-  int material_id, Triangle_shading_mode tsm, const Vector3& v_0, const Vector3& v_1, const Vector3& v_2, const Vector3& normal)
+  int material_id, int texture_id, Triangle_shading_mode tsm, const Vector3& v_0, const Vector3& v_1, const Vector3& v_2, const Vector3& normal)
   : index_0(index_0),
   index_1(index_1),
   index_2(index_2),
   offset(offset),
   material_id(material_id),
+  texture_id(texture_id),
   triangle_shading_mode(tsm),
   normal(normal),
   scene_(scene) {

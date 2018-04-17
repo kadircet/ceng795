@@ -13,10 +13,11 @@ class Sphere : public Shape {
   Vector3 center;
   float radius;
   int material_id;
+  int texture_id;
   Vector3 velocity;
 
-  Sphere(const Vector3& center, float radius, int material_id, const Transformation& transformation, const Vector3& velocity)
-      : center(center), radius(radius), material_id(material_id), transformation_(transformation), velocity(velocity) {
+  Sphere(const Vector3& center, float radius, int material_id, int texture_id, const Transformation& transformation, const Vector3& velocity)
+      : center(center), radius(radius), material_id(material_id), texture_id(texture_id), transformation_(transformation), velocity(velocity) {
     is_identity_ = transformation_.get_transformation_matrix().is_identity();
     const Vector3 delta(radius);
     if (is_identity_) {

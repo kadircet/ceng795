@@ -671,6 +671,14 @@ Scene::Scene(const std::string& file_name) {
     }
     stream.clear();
 
+    int texture_id = -1;
+    child = element->FirstChildElement("Texture");
+    if (child) {
+      stream << child->GetText() << std::endl;
+      stream >> texture_id;
+      texture_id--;
+    }
+    stream.clear();
     std::vector<Shape*> triangles;
 
     child = element->FirstChildElement("Faces");
@@ -678,7 +686,7 @@ Scene::Scene(const std::string& file_name) {
     const char* ply_file = child->Attribute("plyFile");
     if (ply_file)
     {
-      parse_ply_tinyply(std::string(ply_file), vertex_data, triangles, vertex_offset, material_id, triangle_shading_mode);
+      parse_ply_tinyply(std::string(ply_file), vertex_data, triangles, vertex_offset, material_id, texture_id, triangle_shading_mode);
     }
     else {
       vertex_offset = child->IntAttribute("vertexOffset", 0);
@@ -687,7 +695,7 @@ Scene::Scene(const std::string& file_name) {
 
       while (!(stream >> v0_id).eof()) {
         stream >> v1_id >> v2_id;
-        Mesh_triangle* triangle = new  Mesh_triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id, triangle_shading_mode);
+        Mesh_triangle* triangle = new  Mesh_triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, vertex_offset, material_id, texture_id, triangle_shading_mode);
         float area = triangle->get_surface_area();
         const Vector3& surface_normal = triangle->normal;
         vertex_data[triangle->index_0 + triangle->offset].add_vertex_normal(surface_normal, area);
@@ -697,7 +705,7 @@ Scene::Scene(const std::string& file_name) {
       }
     }
     stream.clear();
-    meshes.push_back(new Mesh(material_id, -1, triangles, Arbitrary_transformation(arbitrary_transformation),velocity));
+    meshes.push_back(new Mesh(material_id, texture_id, triangles, Arbitrary_transformation(arbitrary_transformation),velocity));
     element = element->NextSiblingElement("Mesh");
   }
   stream.clear();
@@ -720,11 +728,22 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     stream >> material_id;
     material_id--;
+
     Matrix4x4 arbitrary_transformation = base_mesh->base_transform.get_transformation_matrix();
     const char* reset_transform = element->Attribute("resetTransform");
     if (reset_transform && std::string(reset_transform) == std::string("true")) {
       arbitrary_transformation.make_identity();
     }
+
+    int texture_id = -1;
+    child = element->FirstChildElement("Texture");
+    if (child) {
+      stream << child->GetText() << std::endl;
+      stream >> texture_id;
+      texture_id--;
+    }
+    stream.clear();
+
     child = element->FirstChildElement("Transformations");
     if (child) {
       char type;
@@ -756,7 +775,7 @@ Scene::Scene(const std::string& file_name) {
       stream >> velocity.x >> velocity.y >> velocity.z;
     }
     stream.clear();
-    objects.push_back(new Mesh_instance(material_id, -1, base_mesh, Arbitrary_transformation(arbitrary_transformation), velocity));
+    objects.push_back(new Mesh_instance(material_id, texture_id, base_mesh, Arbitrary_transformation(arbitrary_transformation), velocity));
     element = element->NextSiblingElement("MeshInstance");
   }
   stream.clear();
@@ -771,7 +790,14 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     stream >> material_id;
     material_id--;
-
+    int texture_id = -1;
+    child = element->FirstChildElement("Texture");
+    if (child) {
+      stream << child->GetText() << std::endl;
+      stream >> texture_id;
+      texture_id--;
+    }
+    stream.clear();
     child = element->FirstChildElement("Indices");
     stream << child->GetText() << std::endl;
     int v0_id, v1_id, v2_id;
@@ -802,7 +828,7 @@ Scene::Scene(const std::string& file_name) {
 	  }
     //No motion blur support for primitive triangles, yet
     objects.push_back(
-        new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, 0, material_id, Arbitrary_transformation(arbitrary_transformation)));
+        new Triangle(this, v0_id - 1, v1_id - 1, v2_id - 1, 0, material_id, texture_id, Arbitrary_transformation(arbitrary_transformation)));
     element = element->NextSiblingElement("Triangle");
   }
   stream.clear();
@@ -853,6 +879,14 @@ Scene::Scene(const std::string& file_name) {
       stream.clear();
     }
     stream.clear();
+    int texture_id = -1;
+    child = element->FirstChildElement("Texture");
+    if (child) {
+      stream << child->GetText() << std::endl;
+      stream >> texture_id;
+      texture_id--;
+    }
+    stream.clear();
     Vector3 velocity(0.0f);
     child = element->FirstChildElement("MotionBlur");
     if (child) {
@@ -860,12 +894,29 @@ Scene::Scene(const std::string& file_name) {
       stream >> velocity.x >> velocity.y >> velocity.z;
     }
     stream.clear();
-    objects.push_back(new Sphere(center_of_sphere, radius, material_id, Arbitrary_transformation(arbitrary_transformation), velocity));
+    objects.push_back(new Sphere(center_of_sphere, radius, material_id, texture_id, Arbitrary_transformation(arbitrary_transformation), velocity));
     element = element->NextSiblingElement("Sphere");
   }
   stream.clear();
   debug("Spheres are parsed");
-
+  // Get Textures
+  element = root->FirstChildElement("Textures");
+  if (element) {
+    element = element->FirstChildElement("Texture");
+    while (element) {
+      std::string image_name, interpolation_type, decal_mode, appearance;
+      child = element->FirstChildElement("ImageName");
+      image_name = child->GetText();
+      child = element->FirstChildElement("Interpolation");
+      interpolation_type = child->GetText();
+      child = element->FirstChildElement("DecalMode");
+      decal_mode = child->GetText();
+      child = element->FirstChildElement("Appearance");
+      appearance = child->GetText();
+      textures.push_back(std::move(Texture(image_name, interpolation_type, decal_mode, appearance)));
+      element = element->NextSiblingElement("Texture");
+    }
+  }
   bvh = BVH::create_bvh(objects);
   //Finalize surface normals
   for(Vertex& vertex: vertex_data) {
@@ -877,7 +928,7 @@ Scene::Scene(const std::string& file_name) {
 }
 
 
-void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertices, std::vector<Shape*>& mesh_triangles, int vertex_offset, int material_id, Triangle_shading_mode tsm) const
+void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertices, std::vector<Shape*>& mesh_triangles, int vertex_offset, int material_id, int texture_id, Triangle_shading_mode tsm) const
 {
   try
   {
@@ -1031,7 +1082,7 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
             else {
               normal = (v_1 - v_0).cross(v_2 - v_0).normalize();
             }
-            mesh_triangles.push_back(new Mesh_triangle(this, index_0, index_1, index_2, vertex_offset, material_id, tsm, v_0, v_1, v_2, normal));
+            mesh_triangles.push_back(new Mesh_triangle(this, index_0, index_1, index_2, vertex_offset, material_id, texture_id, tsm, v_0, v_1, v_2, normal));
             if (!has_vertice_normals) {
               Mesh_triangle* triangle = (Mesh_triangle*)*(mesh_triangles.rbegin());
               float area = (v_1 - v_0).cross(v_2 - v_0).length() / 2;
@@ -1062,8 +1113,8 @@ void Scene::parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertice
               normal_1 = (v_1 - v_0).cross(v_3 - v_0).normalize();
               normal_2 = (v_3 - v_2).cross(v_1 - v_2).normalize();
             }
-            mesh_triangles.push_back(new Mesh_triangle(this, index_0, index_1, index_3, vertex_offset, material_id, tsm, v_0, v_1, v_3,normal_1));
-            mesh_triangles.push_back(new Mesh_triangle(this, index_2, index_3, index_1, vertex_offset, material_id, tsm, v_2, v_3, v_1,normal_2));
+            mesh_triangles.push_back(new Mesh_triangle(this, index_0, index_1, index_3, vertex_offset, material_id, texture_id, tsm, v_0, v_1, v_3,normal_1));
+            mesh_triangles.push_back(new Mesh_triangle(this, index_2, index_3, index_1, vertex_offset, material_id, texture_id, tsm, v_2, v_3, v_1,normal_2));
             if (!has_vertice_normals) {
               {
                 Mesh_triangle* triangle1 = (Mesh_triangle*) *(mesh_triangles.rbegin()++);

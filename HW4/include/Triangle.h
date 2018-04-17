@@ -13,8 +13,9 @@ class Triangle : public Shape {
   int offset;
   Vector3 normal;
   int material_id;
+  int texture_id;
   Triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
-           int material_id, const Transformation& transformation);
+           int material_id, int texture_id, const Transformation& transformation);
   bool intersect(const Ray& ray, Hit_data& hit_data) const override;
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;

@@ -2,13 +2,14 @@
 #include "Hit_data.h"
 #include "Scene.h"
 Triangle::Triangle(const Scene* scene, int index_0, int index_1, int index_2, int offset,
-                   int material_id, const Transformation& transformation)
+                   int material_id, int texture_id, const Transformation& transformation)
     : index_0(index_0),
       index_1(index_1),
       index_2(index_2),
       offset(offset),
       material_id(material_id),
-	  transformation_(transformation),
+      texture_id(texture_id),
+	    transformation_(transformation),
       scene_(scene)
 {
   const Vector3& v_0 = scene_->get_vertex_at(index_0+offset).get_vertex_position();
