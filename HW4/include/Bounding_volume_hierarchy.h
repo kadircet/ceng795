@@ -7,7 +7,7 @@
 class BVH : public Shape {
  public:
   static Shape* create_bvh(std::vector<Shape*>& objects) {
-    int size = (int) objects.size();
+    int size = (int)objects.size();
     if (size == 0) {
       return NULL;
     } else if (size == 1) {
@@ -27,6 +27,7 @@ class BVH : public Shape {
   }
   bool intersect(const Ray& ray, Hit_data& hit_data) const override;
   int get_material_id() const override { return -1; }
+  int get_texture_id() const override { return -1; }
   const Bounding_box& get_bounding_box() const override { return bounding_box; }
   void print_debug(int indentation) const override {
     for (int index = 0; index < indentation; index++) {

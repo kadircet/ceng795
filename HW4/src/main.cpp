@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
   std::cout << "Scene is parsed" << std::endl;
   const int thread_count =
       std::thread::hardware_concurrency() * THREAD_MULTIPLIER;
-  const int camera_count = (int) scene.cameras.size();
+  const int camera_count = (int)scene.cameras.size();
   for (int index = 0; index < camera_count; index++) {
     const Camera& camera = scene.cameras[index];
     const Image_plane& image_plane = camera.get_image_plane();
@@ -46,9 +46,9 @@ int main(int argc, char* argv[]) {
     for (int j = 0; j < height; j++) {
       for (int i = 0; i < width; i++) {
         const Vector3 pixel = pixels[j * width + i].get_color();
-        image[idx++] = (int) pixel.x;
-        image[idx++] = (int) pixel.y;
-        image[idx++] = (int) pixel.z;
+        image[idx++] = (int)pixel.x;
+        image[idx++] = (int)pixel.y;
+        image[idx++] = (int)pixel.z;
         image[idx++] = 255;
       }
     }

@@ -3,6 +3,9 @@
 #define VECTOR3_H_
 #include <cmath>
 #include <iostream>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 constexpr const float kEpsilon = 0.000001f;
 constexpr const float kInf = std::numeric_limits<float>::infinity();
 class Vector3 {

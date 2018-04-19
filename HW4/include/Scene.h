@@ -3,19 +3,19 @@
 #define SCENE_H_
 #include <string>
 #include <vector>
+#include "Area_light.h"
 #include "Bounding_volume_hierarchy.h"
 #include "Camera.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "Mesh_triangle.h"
-#include "Area_light.h"
 #include "Point_light.h"
 #include "Shape.h"
 #include "Sphere.h"
+#include "Texture.h"
+#include "Transformation.h"
 #include "Triangle.h"
 #include "Vector3.h"
-#include "Transformation.h"
-#include "Texture.h"
 #include "Vertex.h"
 class Pixel;
 
@@ -35,6 +35,7 @@ class Scene {
   std::vector<Point_light> point_lights;
   std::vector<Material> materials;
   std::vector<Vertex> vertex_data;
+  std::vector<Vector3> texture_coord_data;
   std::vector<Texture> textures;
   inline const Vertex& get_vertex_at(int index) const {
     return vertex_data[index];
@@ -46,9 +47,14 @@ class Scene {
   ~Scene();
 
  private:
+  const Vector3 Scene::get_shading_constant(const Texture* texture, float u,
+                                            float v, const Vector3& kd) const;
   Vector3 trace_ray(const Ray& ray, int max_recursion_depth) const;
   bool refract_ray(const Vector3& direction_unit, const Vector3& normal,
                    const float refraction_index, Vector3& transmitted_d) const;
-  void parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertices, std::vector<Shape*>& mesh_triangles, int vertex_offset, int material_id, int texture_id, Triangle_shading_mode tsm) const;
+  void parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertices,
+                         std::vector<Shape*>& mesh_triangles, int vertex_offset,
+                         int texture_offset, int material_id, int texture_id,
+                         Triangle_shading_mode tsm) const;
 };
 #endif
