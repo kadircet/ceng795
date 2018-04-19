@@ -53,9 +53,9 @@ class Sphere : public Shape {
       const float b = 2 * ray.d.dot(center_to_origin);
       const float c = center_to_origin.dot(center_to_origin) - radius * radius;
       const float determinant = b * b - 4 * a * c;
-      if (determinant < -kEpsilon) {
+      if (determinant < -intersection_test_epsilon) {
         return false;
-      } else if (determinant < kEpsilon) {
+      } else if (determinant < intersection_test_epsilon) {
         hit_data.t = -b / (2 * a);
         hit_data.normal = (ray.point_at(hit_data.t) - center).normalize();
         if (texture_id != -1) {
@@ -71,7 +71,6 @@ class Sphere : public Shape {
         const float sqrt_det = sqrt(determinant);
         const float t1 = (-b + sqrt_det) / (2 * a);
         const float t2 = (-b - sqrt_det) / (2 * a);
-        hit_data.t = fmin(t1, t2);
         if (t2 < 0.0f) {
           hit_data.t = t1;
         } else {
@@ -100,9 +99,9 @@ class Sphere : public Shape {
       const float b = 2 * ray_local.d.dot(center_to_origin);
       const float c = center_to_origin.dot(center_to_origin) - radius * radius;
       const float determinant = b * b - 4 * a * c;
-      if (determinant < -kEpsilon) {
+      if (determinant < -intersection_test_epsilon) {
         return false;
-      } else if (determinant < kEpsilon) {
+      } else if (determinant < intersection_test_epsilon) {
         hit_data.t = -b / (2 * a);
         const Matrix4x4& normal_transformation =
             transformation_.get_normal_transformation_matrix();
@@ -124,7 +123,6 @@ class Sphere : public Shape {
         const float sqrt_det = sqrt(determinant);
         const float t1 = (-b + sqrt_det) / (2 * a);
         const float t2 = (-b - sqrt_det) / (2 * a);
-        hit_data.t = fmin(t1, t2);
         if (t2 < 0.0f) {
           hit_data.t = t1;
         } else {
@@ -166,9 +164,9 @@ class Sphere : public Shape {
       const float b = 2 * ray_local.d.dot(center_to_origin);
       const float c = center_to_origin.dot(center_to_origin) - radius * radius;
       const float determinant = b * b - 4 * a * c;
-      if (determinant < -kEpsilon) {
+      if (determinant < -intersection_test_epsilon) {
         return false;
-      } else if (determinant < kEpsilon) {
+      } else if (determinant < intersection_test_epsilon) {
         hit_data.t = -b / (2 * a);
         const Matrix4x4& normal_transformation =
             transformation.get_normal_transformation_matrix();
@@ -190,7 +188,6 @@ class Sphere : public Shape {
         const float sqrt_det = sqrt(determinant);
         const float t1 = (-b + sqrt_det) / (2 * a);
         const float t2 = (-b - sqrt_det) / (2 * a);
-        hit_data.t = fmin(t1, t2);
         if (t2 < 0.0f) {
           hit_data.t = t1;
         } else {

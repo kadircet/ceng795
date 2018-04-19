@@ -8,6 +8,7 @@
 #include "tinyply.h"
 #include "tinyxml2.h"
 #define APPLY_FILTER_SINGLE_SAMPLE
+
 inline float gaussian_filter(float x, float y, float sigma) {
   return exp(-(x * x + y * y) / (2 * sigma * sigma)) /
          (float)(2 * M_PI * sigma);
@@ -50,17 +51,17 @@ void Scene::render_image(int camera_index, Pixel* result,
   } else {
     for (int j = starting_row; j < height; j += height_increase) {
       for (int i = 0; i < width; i++) {
-        std::default_random_engine ms_generator;
+        std::mt19937 ms_generator;
         ms_generator.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> ms_distribution(0.0f, 1.0f);
 
-        std::default_random_engine dof_generator;
+        std::mt19937 dof_generator;
         dof_generator.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> dof_distribution(-1.0f, 1.0f);
 
-        std::default_random_engine time_generator;
+        std::mt19937 time_generator;
         time_generator.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> time_distribution(0.0f, 1.0f);
@@ -215,7 +216,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         if (!has_diffuse && !has_specular) {
           continue;
         }
-        std::default_random_engine area_light_generator;
+        std::mt19937 area_light_generator;
         area_light_generator.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> area_light_distribution(0.0f,
@@ -280,12 +281,12 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         //(u,w_r,v) basis
         Vector3 u = r_prime.cross(w_r).normalize();
         Vector3 v = u.cross(w_r).normalize();
-        std::default_random_engine glossy_generator_u;
+        std::mt19937 glossy_generator_u;
         glossy_generator_u.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> glossy_distribution_u(-0.5f,
                                                                     0.5f);
-        std::default_random_engine glossy_generator_v;
+        std::mt19937 glossy_generator_v;
         glossy_generator_v.seed(
             std::chrono::system_clock::now().time_since_epoch().count());
         std::uniform_real_distribution<float> glossy_distribution_v(-0.5f,
@@ -391,7 +392,14 @@ Scene::Scene(const std::string& file_name) {
   stream >> shadow_ray_epsilon;
   debug("ShadowRayEpsilon is parsed");
   //
-
+  // Get IntersectionTestEpsilon
+  /*element = root->FirstChildElement("IntersectionTestEpsilon");
+  if (element) {
+    stream << element->GetText() << std::endl;
+    stream >> intersection_test_epsilon;
+    debug("IntersectionTestEpsilon is parsed");
+  }*/
+  //
   // Get MaxRecursionDepth
   element = root->FirstChildElement("MaxRecursionDepth");
   if (element) {
