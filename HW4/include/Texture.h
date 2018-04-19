@@ -1,13 +1,6 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
-#ifndef WIN32
-#define cimg_use_jpeg
-#endif
-#define cimg_display 0
-
 #include <string>
-
-//#include "CImg.h"
 #include "Vector3.h"
 class Texture {
  public:
@@ -30,7 +23,6 @@ class Texture {
   Interpolation_type interpolation_type_;
   Decal_mode decal_mode_;
   Appearance appearance_;
-  // cimg_library::CImg<unsigned char> texture_image;
   unsigned char* texture_image_;
   int width_;
   int height_;

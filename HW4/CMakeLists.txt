@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.11)
 
 project (raytracer)
 # The version number
-set(raytracer_VERSION_MAJOR 3)
+set(raytracer_VERSION_MAJOR 4)
 set(raytracer_VERSION_MINOR 0)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,23 +14,4 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE HEADERS "include/*.h")
 
 add_executable(raytracer ${SOURCES} ${HEADERS})
-if (WIN32)
-  # set stuff for windows
-  message("Looking for ImageMagick")
-  find_package(ImageMagick)
-  if (NOT ImageMagick_FOUND)
-    message(FATAL_ERROR "ImageMagick is not found")
-  else()
-    message("ImageMagick is found")
-  endif()
-else()
-  # set stuff for other systems
-  find_package(JPEG)
-  if(JPEG_FOUND)
-    message(STATUS "libjpeg is found")
-    include_directories(${JPEG_INCLUDE_DIR})
-    target_link_libraries(raytracer ${JPEG_LIBRARIES})
-  else()
-    message(FATAL_ERROR "libjpeg is not found")
-  endif()
-endif()
+
