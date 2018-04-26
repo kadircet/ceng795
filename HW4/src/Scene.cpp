@@ -268,9 +268,6 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       } else {
         const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
         Vector3 r_prime;
-        float x = std::fabs(w_r.x);
-        float y = std::fabs(w_r.y);
-        float z = std::fabs(w_r.z);
         if (w_r.x < w_r.y && w_r.x < w_r.z) {
           r_prime = Vector3(1.0f, w_r.y, w_r.z);
         } else if (w_r.y < w_r.z && w_r.y < w_r.x) {

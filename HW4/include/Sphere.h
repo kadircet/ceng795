@@ -22,8 +22,8 @@ class Sphere : public Shape {
         radius(radius),
         material_id(material_id),
         texture_id(texture_id),
-        transformation_(transformation),
-        velocity(velocity) {
+        velocity(velocity),
+        transformation_(transformation) {
     is_identity_ = transformation_.get_transformation_matrix().is_identity();
     const Vector3 delta(radius);
     if (is_identity_) {

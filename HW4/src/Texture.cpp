@@ -12,12 +12,12 @@ Texture::Texture(const std::string& image_name,
   appearance_ = to_appearance(appearance);
 }
 Texture::Texture(Texture&& rhs)
-    : texture_image_(rhs.texture_image_),
-      width_(rhs.width_),
-      height_(rhs.height_),
-      interpolation_type_(rhs.interpolation_type_),
+    : interpolation_type_(rhs.interpolation_type_),
       decal_mode_(rhs.decal_mode_),
-      appearance_(rhs.appearance_) {
+      appearance_(rhs.appearance_),
+      texture_image_(rhs.texture_image_),
+      width_(rhs.width_),
+      height_(rhs.height_) {
   rhs.texture_image_ = nullptr;
 }
 
@@ -33,11 +33,10 @@ Vector3 Texture::get_color_at(float u, float v) const {
     u = fmax(0.0f, fmin(1.0f, u - (unsigned int)u));
     v = fmax(0.0f, fmin(1.0f, v - (unsigned int)v));
   }
-
   u *= width_;
-  // if (u >= width_) u--;
+  if(u>=width_) u--;
   v *= height_;
-  // if (v >= height_) v--;
+  if(v>=height_) v--;
   Vector3 color;
   if (interpolation_type_ == it_nearest) {
     unsigned int coord = 3 * width_ * (unsigned int)v + 3 * (unsigned int)u;
@@ -45,28 +44,66 @@ Vector3 Texture::get_color_at(float u, float v) const {
     color.y = texture_image_[coord + 1];
     color.z = texture_image_[coord + 2];
   } else {
-    const unsigned int p = u;
-    const unsigned int q = v;
-    const float dx = u - p;
-    const float dy = v - q;
-    const int c_p_q = 3 * width_ * q + 3 * p;
-    const int c_pn_q = c_p_q + 3;
-    const int c_p_qn = c_p_q + 3 * width_;
-    const int c_pn_qn = c_p_qn + 3;
-    color.x = texture_image_[c_p_q] * (1 - dx) * (1 - dy);
-    color.x += texture_image_[c_pn_q] * (dx) * (1 - dy);
-    color.x += texture_image_[c_pn_qn] * (dx) * (dy);
-    color.x += texture_image_[c_p_qn] * (1 - dx) * (dy);
-
-    color.y = texture_image_[c_p_q + 1] * (1 - dx) * (1 - dy);
-    color.y += texture_image_[c_pn_q + 1] * (dx) * (1 - dy);
-    color.y += texture_image_[c_pn_qn + 1] * (dx) * (dy);
-    color.y += texture_image_[c_p_qn + 1] * (1 - dx) * (dy);
-
-    color.z = texture_image_[c_p_q + 2] * (1 - dx) * (1 - dy);
-    color.z += texture_image_[c_pn_q + 2] * (dx) * (1 - dy);
-    color.z += texture_image_[c_pn_qn + 2] * (dx) * (dy);
-    color.z += texture_image_[c_p_qn + 2] * (1 - dx) * (dy);
+    if(appearance_ == a_repeat)
+    {
+      const unsigned int p = ((unsigned int)u)%width_;
+      const unsigned int pn = (p+1)%width_;
+      const unsigned int q = ((unsigned int)v)%height_;
+      const unsigned int qn = (q+1)%height_;
+      const float dx = u - p;
+      const float dy = v - q;
+      const int c_p_q = 3 * (width_ * q + p);
+      const int c_pn_q = 3 *(width_ * q + pn);
+      const int c_p_qn = 3 * ( width_ * qn + p);
+      const int c_pn_qn = 3 * ( width_ * qn + pn);
+      color.x = texture_image_[c_p_q] * (1 - dx) * (1 - dy);
+      color.x += texture_image_[c_pn_q] * (dx) * (1 - dy);
+      color.x += texture_image_[c_pn_qn] * (dx) * (dy);
+      color.x += texture_image_[c_p_qn] * (1 - dx) * (dy);
+      
+      color.y = texture_image_[c_p_q + 1] * (1 - dx) * (1 - dy);
+      color.y += texture_image_[c_pn_q + 1] * (dx) * (1 - dy);
+      color.y += texture_image_[c_pn_qn + 1] * (dx) * (dy);
+      color.y += texture_image_[c_p_qn + 1] * (1 - dx) * (dy);
+      
+      color.z = texture_image_[c_p_q + 2] * (1 - dx) * (1 - dy);
+      color.z += texture_image_[c_pn_q + 2] * (dx) * (1 - dy);
+      color.z += texture_image_[c_pn_qn + 2] * (dx) * (dy);
+      color.z += texture_image_[c_p_qn + 2] * (1 - dx) * (dy);
+    }
+    else {
+      const unsigned int p = u;
+      const unsigned int pn = p+1;
+      const unsigned int q = v;
+      const unsigned int qn = v+1;
+      const float dx = u - p;
+      const float dy = v - q;
+      const int c_p_q = 3 * (width_ * q + p);
+      const int c_pn_q = 3 *(width_ * q + pn);
+      const int c_p_qn = 3 * ( width_ * qn + p);
+      const int c_pn_qn = 3 * ( width_ * qn + pn);
+      color.x = texture_image_[c_p_q] * (1 - dx) * (1 - dy);
+      color.y = texture_image_[c_p_q + 1] * (1 - dx) * (1 - dy);
+      color.z = texture_image_[c_p_q + 2] * (1 - dx) * (1 - dy);
+      if(pn<width_)
+      {
+        color.x += texture_image_[c_pn_q] * (dx) * (1 - dy);
+        color.y += texture_image_[c_pn_q + 1] * (dx) * (1 - dy);
+        color.z += texture_image_[c_pn_q + 2] * (dx) * (1 - dy);
+      }
+      if(qn<height_)
+      {
+        color.x += texture_image_[c_pn_qn] * (dx) * (dy);
+        color.y += texture_image_[c_pn_qn + 1] * (dx) * (dy);
+        color.z += texture_image_[c_pn_qn + 2] * (dx) * (dy);
+      }
+      if(pn<width_ && qn<height_)
+      {
+        color.x += texture_image_[c_p_qn] * (1 - dx) * (dy);
+        color.y += texture_image_[c_p_qn + 1] * (1 - dx) * (dy);
+        color.z += texture_image_[c_p_qn + 2] * (1 - dx) * (dy);
+      }
+    }
   }
 
   if (decal_mode_ == dm_blend_kd || decal_mode_ == dm_replace_kd) {

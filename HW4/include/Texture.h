@@ -6,7 +6,7 @@ class Texture {
  public:
   Texture(const std::string& image_name, const std::string& interpolation_type,
           const std::string& decal_mode, const std::string& appearance);
-  Texture::Texture(Texture&& rhs);
+  Texture(Texture&& rhs);
   ~Texture();
   Vector3 get_color_at(float u, float v) const;
   enum Interpolation_type { it_nearest, it_bilinear };

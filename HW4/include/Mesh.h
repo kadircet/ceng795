@@ -33,8 +33,8 @@ class Mesh : public Shape {
       : material_id(material_id),
         texture_id(texture_id),
         bvh(NULL),
-        base_transform(b_transform),
-        velocity(velocity) {
+        velocity(velocity),
+        base_transform(b_transform) {
     bvh = BVH::create_bvh(triangles);
   }
 
@@ -113,9 +113,9 @@ class Mesh_instance : public Shape {
                 const Transformation& transformation, const Vector3& velocity)
       : material_id(material_id),
         texture_id(texture_id),
+        velocity(velocity),
         mesh_(mesh),
         transformation_(transformation),
-        velocity(velocity),
         bounding_box_(Bounding_box::apply_transform(mesh->get_bounding_box(),
                                                     transformation)) {
     if (velocity != Vector3(0.0f)) {

@@ -13,10 +13,10 @@ class Camera {
          int image_height, float focus_distance, float aperture_size)
       : e(position),
         number_of_samples_(number_of_samples),
+        aperture_size_(aperture_size),
         filename_(filename),
         image_plane_(left, right, bottom, top, distance, image_width,
-                     image_height),
-        aperture_size_(aperture_size) {
+                     image_height) {
     w = -(gaze.normalize());
     u = up.normalize().cross(w).normalize();
     v = w.cross(u).normalize();
