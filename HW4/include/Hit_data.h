@@ -7,7 +7,7 @@ struct Hit_data {
   float t;
   const Shape* shape;
   Vector3 normal;
-  float u, v; // for textures
+  float u, v;  // for textures
   // Material_data material;
 };
 #endif

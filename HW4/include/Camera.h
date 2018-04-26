@@ -22,8 +22,9 @@ class Camera {
     v = w.cross(u).normalize();
     if (aperture_size_ != 0.0f) {
       float ratio = focus_distance / distance;
-      image_plane_ = Image_plane(ratio*left, ratio*right, ratio*bottom, ratio*top, focus_distance, image_width,
-        image_height);
+      image_plane_ =
+          Image_plane(ratio * left, ratio * right, ratio * bottom, ratio * top,
+                      focus_distance, image_width, image_height);
     }
     top_left_corner = e - w * image_plane_.distance + image_plane_.left * u +
                       image_plane_.top * v;
@@ -38,11 +39,13 @@ class Camera {
         top_left_corner + (x + 0.5f) * s_u_constant - (y + 0.5f) * s_v_constant;
     return Ray(e, (s - e).normalize(), r_primary, time);
   }
-  Ray calculate_ray_at(float x, float y, float x_offset_ratio, float y_offset_ratio, float time = 0.0f) const {
+  Ray calculate_ray_at(float x, float y, float x_offset_ratio,
+                       float y_offset_ratio, float time = 0.0f) const {
     // For now, origin is top_left, right handed camera
-    Vector3 new_e = e + (u * x_offset_ratio + v * y_offset_ratio)*aperture_size_*0.5f;
+    Vector3 new_e =
+        e + (u * x_offset_ratio + v * y_offset_ratio) * aperture_size_ * 0.5f;
     const Vector3 s =
-      top_left_corner + (x + 0.5f) * s_u_constant - (y + 0.5f) * s_v_constant;
+        top_left_corner + (x + 0.5f) * s_u_constant - (y + 0.5f) * s_v_constant;
     return Ray(new_e, (s - new_e).normalize(), r_primary, time);
   }
   const Image_plane& get_image_plane() const { return image_plane_; }

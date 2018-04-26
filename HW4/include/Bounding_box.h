@@ -5,7 +5,8 @@
 class Transformation;
 class Bounding_box {
  public:
-  static Bounding_box apply_transform(const Bounding_box& bounding_box, const Transformation& transform);
+  static Bounding_box apply_transform(const Bounding_box& bounding_box,
+                                      const Transformation& transform);
   Bounding_box()
       : min_corner(kInf, kInf, kInf), max_corner(-kInf, -kInf, -kInf) {}
   Bounding_box(const Vector3& min, const Vector3& max)

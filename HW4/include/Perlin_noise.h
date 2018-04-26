@@ -1,14 +1,15 @@
 #ifndef PERLIN_NOISE_H_
 #define PERLIN_NOISE_H_
-#include "Vector3.h"
 #include <vector>
+#include "Vector3.h"
 
 class Perlin_noise {
-public:
+ public:
   enum Perlin_noise_appearance { pn_vein, pn_patch };
   Perlin_noise(const std::string& pn_appearance, float scaling_factor = 1.0f);
   float get_value_at(const Vector3& position) const;
-private:
+
+ private:
   float scaling_factor_;
   Perlin_noise_appearance pn_appearance_;
   std::vector<int> p_;

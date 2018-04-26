@@ -153,18 +153,19 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
 
   Vector3 diffuse_color = material.diffuse;
   bool is_replace_all = false;
-  if(texture)
-  {
+  if (texture) {
     is_replace_all = texture->get_decal_mode() == Texture::dm_replace_all;
-    if(is_replace_all) {
+    if (is_replace_all) {
       color = texture->get_color_at(hit_data.u, hit_data.v);
     } else {
-      if(texture->is_perlin_noise()) {
-        float value = texture->get_perlin_noise()->get_value_at(intersection_point);
-        diffuse_color = texture->blend_color(Vector3(value,value,value), diffuse_color);
+      if (texture->is_perlin_noise()) {
+        float value =
+            texture->get_perlin_noise()->get_value_at(intersection_point);
+        diffuse_color =
+            texture->blend_color(Vector3(value, value, value), diffuse_color);
       } else {
         Vector3 texture_color = texture->get_color_at(hit_data.u, hit_data.v);
-        diffuse_color = texture->blend_color(texture_color,diffuse_color);
+        diffuse_color = texture->blend_color(texture_color, diffuse_color);
       }
     }
   }
@@ -200,8 +201,8 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         float light_distance_squared = light_distance * light_distance;
         if (has_diffuse) {
           float diffuse_cos_theta = normal.dot(w_i);
-          color += diffuse_color * point_light.intensity *
-                   diffuse_cos_theta / light_distance_squared;
+          color += diffuse_color * point_light.intensity * diffuse_cos_theta /
+                   light_distance_squared;
         }
         if (has_specular) {
           float specular_cos_theta =
@@ -1022,13 +1023,13 @@ Scene::Scene(const std::string& file_name) {
       child = element->FirstChildElement("ImageName");
       image_name = child->GetText();
       child = element->FirstChildElement("Interpolation");
-      if(child) {
+      if (child) {
         interpolation_type = child->GetText();
       } else {
         interpolation_type = "bilinear";
       }
       child = element->FirstChildElement("DecalMode");
-      if(child) {
+      if (child) {
         decal_mode = child->GetText();
       } else {
         decal_mode = "blend_kd";
@@ -1040,22 +1041,23 @@ Scene::Scene(const std::string& file_name) {
         appearance = "clamp";
       }
       child = element->FirstChildElement("Normalizer");
-      if(child) {
+      if (child) {
         stream << child->GetText() << std::endl;
       } else {
         stream << "255.0" << std::endl;
       }
       child = element->FirstChildElement("ScalingFactor");
-      if(child) {
+      if (child) {
         stream << child->GetText() << std::endl;
       } else {
         stream << "1.0" << std::endl;
       }
       float normalizer, scaling_factor;
       stream >> normalizer >> scaling_factor;
-      textures.push_back(std::move(
-          Texture(image_name, interpolation_type, decal_mode, appearance, normalizer, scaling_factor)));
-      
+      textures.push_back(
+          std::move(Texture(image_name, interpolation_type, decal_mode,
+                            appearance, normalizer, scaling_factor)));
+
       element = element->NextSiblingElement("Texture");
     }
   }
