@@ -7,7 +7,7 @@ const std::vector<Vector3> Perlin_noise::g_ = {
     Vector3(1, 1, 0), Vector3(-1, 1, 0), Vector3(1, -1, 0), Vector3(-1, -1, 0),
     Vector3(1, 0, 1), Vector3(-1, 0, 1), Vector3(1, 0, -1), Vector3(-1, 0, -1),
     Vector3(0, 1, 1), Vector3(0, -1, 1), Vector3(0, 1, -1), Vector3(0, -1, -1),
-    Vector3(1, 1, 0), Vector3(-1, 1, 0), Vector3(0, -1, 1), Vector3(0, -1, 1)};
+    Vector3(1, 1, 0), Vector3(-1, 1, 0), Vector3(0, -1, 1), Vector3(0, -1, -1)};
 
 Perlin_noise::Perlin_noise(const std::string& pn_appearance,
                            float scaling_factor)
