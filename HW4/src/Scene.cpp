@@ -1052,11 +1052,13 @@ Scene::Scene(const std::string& file_name) {
       } else {
         stream << "1.0" << std::endl;
       }
+      float bumpmap_multiplier = element->FloatAttribute("bumpmapMultiplier", 1.0f);
+      bool is_bump = element->BoolAttribute("bumpmap", false);
       float normalizer, scaling_factor;
       stream >> normalizer >> scaling_factor;
       textures.push_back(
           std::move(Texture(image_name, interpolation_type, decal_mode,
-                            appearance, normalizer, scaling_factor)));
+                            appearance, normalizer, scaling_factor,is_bump,bumpmap_multiplier)));
 
       element = element->NextSiblingElement("Texture");
     }

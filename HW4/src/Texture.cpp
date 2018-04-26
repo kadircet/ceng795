@@ -5,7 +5,8 @@
 Texture::Texture(const std::string& image_name,
                  const std::string& interpolation_type,
                  const std::string& decal_mode, const std::string& appearance,
-                 const float normalizer, const float scaling_factor) {
+                 const float normalizer, const float scaling_factor,
+                 const bool is_bump, const float bumpmap_multiplier) {
   std::cout << decal_mode << std::endl;
   int n;
   if (image_name != std::string("perlin")) {
@@ -19,6 +20,8 @@ Texture::Texture(const std::string& image_name,
   interpolation_type_ = to_interpolation_type(interpolation_type);
   decal_mode_ = to_decal_mode(decal_mode);
   normalizer_ = normalizer;
+  is_bump_ = is_bump;
+  bumpmap_multiplier_ = bumpmap_multiplier;
 }
 Texture::Texture(Texture&& rhs)
     : interpolation_type_(rhs.interpolation_type_),
@@ -28,7 +31,9 @@ Texture::Texture(Texture&& rhs)
       width_(rhs.width_),
       height_(rhs.height_),
       normalizer_(rhs.normalizer_),
-      perlin_noise_(rhs.perlin_noise_) {
+      perlin_noise_(rhs.perlin_noise_),
+      is_bump_(rhs.is_bump_),
+      bumpmap_multiplier_(rhs.bumpmap_multiplier_) {
   rhs.texture_image_ = nullptr;
   rhs.perlin_noise_ = nullptr;
 }

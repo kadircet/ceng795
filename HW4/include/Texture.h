@@ -6,7 +6,7 @@
 class Texture {
  public:
   Texture(const std::string& image_name, const std::string& interpolation_type,
-          const std::string& decal_mode, const std::string& appearance, const float normalizer, const float scaling_factor);
+          const std::string& decal_mode, const std::string& appearance, const float normalizer, const float scaling_factor, const bool is_bump, const float bumpmap_multiplier);
   Texture(Texture&& rhs);
   ~Texture();
   Vector3 get_color_at(float u, float v) const;
@@ -24,6 +24,9 @@ class Texture {
   inline bool is_perlin_noise() const {
     return perlin_noise_ != nullptr;
   }
+  inline bool is_bump() const {
+    return is_bump_;
+  }
  private:
   Interpolation_type interpolation_type_;
   Decal_mode decal_mode_;
@@ -33,6 +36,8 @@ class Texture {
   int height_;
   float normalizer_;
   Perlin_noise* perlin_noise_;
+  bool is_bump_;
+  float bumpmap_multiplier_;
   Interpolation_type to_interpolation_type(const std::string& str) {
     return str == "nearest" ? it_nearest : it_bilinear;
   }
