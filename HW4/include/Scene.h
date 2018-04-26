@@ -47,8 +47,6 @@ class Scene {
   ~Scene();
 
  private:
-  const Vector3 get_shading_constant(const Texture* texture, float u,
-                                            float v, const Vector3& kd) const;
   Vector3 trace_ray(const Ray& ray, int max_recursion_depth) const;
   bool refract_ray(const Vector3& direction_unit, const Vector3& normal,
                    const float refraction_index, Vector3& transmitted_d) const;

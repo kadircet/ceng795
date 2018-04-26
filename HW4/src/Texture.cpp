@@ -4,12 +4,20 @@
 
 Texture::Texture(const std::string& image_name,
                  const std::string& interpolation_type,
-                 const std::string& decal_mode, const std::string& appearance) {
+                 const std::string& decal_mode, const std::string& appearance, const float normalizer, const float scaling_factor) {
+  std::cout<<decal_mode<<std::endl;
   int n;
-  texture_image_ = stbi_load(image_name.c_str(), &width_, &height_, &n, 3);
+  if(image_name != std::string("perlin")) {
+    texture_image_ = stbi_load(image_name.c_str(), &width_, &height_, &n, 3);
+    perlin_noise_ = nullptr;
+  } else {
+    texture_image_ = nullptr;
+    perlin_noise_ = new Perlin_noise(appearance, scaling_factor);
+  }
+  appearance_ = to_appearance(appearance);
   interpolation_type_ = to_interpolation_type(interpolation_type);
   decal_mode_ = to_decal_mode(decal_mode);
-  appearance_ = to_appearance(appearance);
+  normalizer_ = normalizer;
 }
 Texture::Texture(Texture&& rhs)
     : interpolation_type_(rhs.interpolation_type_),
@@ -17,21 +25,38 @@ Texture::Texture(Texture&& rhs)
       appearance_(rhs.appearance_),
       texture_image_(rhs.texture_image_),
       width_(rhs.width_),
-      height_(rhs.height_) {
+      height_(rhs.height_),
+      normalizer_(rhs.normalizer_),
+      perlin_noise_(rhs.perlin_noise_) {
   rhs.texture_image_ = nullptr;
+  rhs.perlin_noise_ = nullptr;
 }
 
 Texture::~Texture() {
   if (texture_image_) stbi_image_free(texture_image_);
+  if (perlin_noise_) free(perlin_noise_);
 }
-
+Vector3 Texture::blend_color(const Vector3& texture_color, const Vector3& diffuse_color) const
+{
+  switch (decal_mode_)
+  {
+    case dm_replace_kd:
+      return texture_color;
+    case dm_blend_kd:
+      return (texture_color + diffuse_color) / 2.0f;
+    case dm_replace_all:
+      return Vector3(0.0f, 0.0f, 0.0f);
+    default:
+      return Vector3(0.0f, 0.0f, 0.0f);
+  }
+}
 Vector3 Texture::get_color_at(float u, float v) const {
   if (appearance_ == a_clamp) {
     u = fmax(0.0f, fmin(1.0f, u));
     v = fmax(0.0f, fmin(1.0f, v));
   } else {
-    u = fmax(0.0f, fmin(1.0f, u - (unsigned int)u));
-    v = fmax(0.0f, fmin(1.0f, v - (unsigned int)v));
+    u = fmax(0.0f, fmin(1.0f, u - floor(u)));
+    v = fmax(0.0f, fmin(1.0f, v - floor(v)));
   }
   u *= width_;
   if(u>=width_) u--;
@@ -107,7 +132,7 @@ Vector3 Texture::get_color_at(float u, float v) const {
   }
 
   if (decal_mode_ == dm_blend_kd || decal_mode_ == dm_replace_kd) {
-    color /= 255.0f;
+    color /= normalizer_;
   }
   return color;
 }

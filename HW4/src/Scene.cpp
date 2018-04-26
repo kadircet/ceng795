@@ -129,16 +129,7 @@ bool Scene::refract_ray(const Vector3& direction_unit, const Vector3& normal,
           .normalize();
   return true;
 }
-const Vector3 Scene::get_shading_constant(const Texture* texture, float u,
-                                          float v, const Vector3& kd) const {
-  Vector3 res;
-  if (!texture) return kd;
-  res = texture->get_color_at(u, v);
-  if (texture->get_decal_mode() == Texture::dm_blend_kd) {
-    res = (res + kd) / 2;
-  }
-  return res;
-}
+
 Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   Vector3 color;
   // Find intersection
@@ -160,13 +151,24 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   const Vector3 w_0 = (ray.o - intersection_point).normalize();
   const Vector3& normal = hit_data.normal;
 
-  const Vector3 diffuse_constant =
-      get_shading_constant(texture, hit_data.u, hit_data.v, material.diffuse);
-  bool is_replace_all =
-      (texture) ? texture->get_decal_mode() == Texture::dm_replace_all : false;
-  if (is_replace_all) {
-    color = diffuse_constant;
-  } else {
+  Vector3 diffuse_color = material.diffuse;
+  bool is_replace_all = false;
+  if(texture)
+  {
+    is_replace_all = texture->get_decal_mode() == Texture::dm_replace_all;
+    if(is_replace_all) {
+      color = texture->get_color_at(hit_data.u, hit_data.v);
+    } else {
+      if(texture->is_perlin_noise()) {
+        float value = texture->get_perlin_noise()->get_value_at(intersection_point);
+        diffuse_color = texture->blend_color(Vector3(value,value,value), diffuse_color);
+      } else {
+        Vector3 texture_color = texture->get_color_at(hit_data.u, hit_data.v);
+        diffuse_color = texture->blend_color(texture_color,diffuse_color);
+      }
+    }
+  }
+  if (!is_replace_all) {
     if (!ray.in_medium) {
       // ambient light
       // Should it be outside of if statement?
@@ -198,7 +200,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         float light_distance_squared = light_distance * light_distance;
         if (has_diffuse) {
           float diffuse_cos_theta = normal.dot(w_i);
-          color += diffuse_constant * point_light.intensity *
+          color += diffuse_color * point_light.intensity *
                    diffuse_cos_theta / light_distance_squared;
         }
         if (has_specular) {
@@ -245,7 +247,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         float intensity_cos = (-w_i).dot(area_light.normal);
         if (has_diffuse) {
           float diffuse_cos_theta = normal.dot(w_i);
-          color += diffuse_constant * area_light.intensity * intensity_cos *
+          color += diffuse_color * area_light.intensity * intensity_cos *
                    diffuse_cos_theta / light_distance_squared;
         }
         if (has_specular) {
@@ -1020,21 +1022,45 @@ Scene::Scene(const std::string& file_name) {
       child = element->FirstChildElement("ImageName");
       image_name = child->GetText();
       child = element->FirstChildElement("Interpolation");
-      interpolation_type = child->GetText();
+      if(child) {
+        interpolation_type = child->GetText();
+      } else {
+        interpolation_type = "bilinear";
+      }
       child = element->FirstChildElement("DecalMode");
-      decal_mode = child->GetText();
+      if(child) {
+        decal_mode = child->GetText();
+      } else {
+        decal_mode = "blend_kd";
+      }
       child = element->FirstChildElement("Appearance");
       if (child) {
         appearance = child->GetText();
       } else {
         appearance = "clamp";
       }
-
+      child = element->FirstChildElement("Normalizer");
+      if(child) {
+        stream << child->GetText() << std::endl;
+      } else {
+        stream << "255.0" << std::endl;
+      }
+      child = element->FirstChildElement("ScalingFactor");
+      if(child) {
+        stream << child->GetText() << std::endl;
+      } else {
+        stream << "1.0" << std::endl;
+      }
+      float normalizer, scaling_factor;
+      stream >> normalizer >> scaling_factor;
       textures.push_back(std::move(
-          Texture(image_name, interpolation_type, decal_mode, appearance)));
+          Texture(image_name, interpolation_type, decal_mode, appearance, normalizer, scaling_factor)));
+      
       element = element->NextSiblingElement("Texture");
     }
   }
+  stream.clear();
+  debug("Textures are parsed");
   bvh = BVH::create_bvh(objects);
   // Finalize surface normals
   for (Vertex& vertex : vertex_data) {

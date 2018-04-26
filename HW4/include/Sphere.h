@@ -200,7 +200,7 @@ class Sphere : public Shape {
                 .multiply((ray_local.point_at(hit_data.t) - center).normalize(),
                           true)
                 .normalize();
-        if (texture_id != -1) {
+        if (texture_id != -1 ) {
           hit_data.u =
               (-atan2(hit_data.normal.z, hit_data.normal.x) + M_PI) / M_PI / 2;
           hit_data.v = acos(hit_data.normal.y) / M_PI;

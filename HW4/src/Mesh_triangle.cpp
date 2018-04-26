@@ -77,7 +77,7 @@ bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   if (t > -intersection_test_epsilon) {
     hit_data.t = t;
     hit_data.shape = this;
-    if (texture_id != -1) {
+    if (texture_id != -1 && !scene_->textures[texture_id].is_perlin_noise()) {
       Vector3 ua = scene_->texture_coord_data[index_0 + texture_offset];
       Vector3 ub = scene_->texture_coord_data[index_1 + texture_offset];
       Vector3 uc = scene_->texture_coord_data[index_2 + texture_offset];
