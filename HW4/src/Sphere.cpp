@@ -63,18 +63,23 @@ bool Sphere::intersect(const Ray& ray, Hit_data& hit_data) const {
   }
   const Matrix4x4& normal_transformation =
   transformation.get_normal_transformation_matrix();
-  Vector3 local_coordinates = ray_local.point_at(hit_data.t)-center;
+  Vector3 local_intersection_point = ray_local.point_at(hit_data.t);
+  Vector3 local_coordinates = local_intersection_point-center;
   Vector3 normal = local_coordinates.normalize();
   float u = -1;
   float v = -1;
+  float perlin_value = -1;
   if (texture_id != -1 ) {
     get_uv(local_coordinates,u,v);
     const Texture& texture = scene_->textures[texture_id];
-    if(texture.is_bump()) {
-      if(texture.is_perlin_noise())
-      {
-        //TODO
-      } else {
+    if(texture.is_perlin_noise())
+    {
+      perlin_value = texture.get_perlin_noise()->get_value_at(local_intersection_point);
+      if(texture.is_bump()) {
+        normal = texture.bump_normal(normal, local_intersection_point);
+      }
+    } else {
+      if(texture.is_bump()) {
         //calculate gradient vectors
         float theta = M_PI * v;
         float phi   = M_PI * (1 - 2*u);
@@ -86,6 +91,7 @@ bool Sphere::intersect(const Ray& ray, Hit_data& hit_data) const {
   }
   hit_data.u = u;
   hit_data.v = v;
+  hit_data.perlin_value = perlin_value;
   hit_data.normal = normal_transformation.multiply(normal,true).normalize();;
   hit_data.shape = this;
   return true;

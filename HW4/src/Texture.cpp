@@ -134,8 +134,16 @@ Vector3 Texture::get_color_at(float u, float v) const {
   return color;
 }
 
-Vector3 Texture::bump_normal(const Vector3 &dp_du, const Vector3 &dp_dv, const Vector3 &normal, const Vector3 &position) const {
-  return 0.0f;
+Vector3 Texture::bump_normal(const Vector3 &normal, const Vector3 &position) const {
+  const float perlin_value = perlin_noise_->get_value_at(position);
+  const float epsilon = 0.001;
+  const float dd_dx = (perlin_noise_->get_value_at(position+Vector3(epsilon,0,0)) - perlin_value) / epsilon;
+  const float dd_dy = (perlin_noise_->get_value_at(position+Vector3(0,epsilon,0)) - perlin_value) / epsilon;
+  const float dd_dz = (perlin_noise_->get_value_at(position+Vector3(0,0,epsilon)) - perlin_value) / epsilon;
+  Vector3 g = bumpmap_multiplier_*Vector3(dd_dx,dd_dy,dd_dz);
+  Vector3 g_ii = normal*(g.dot(normal));
+  Vector3 surface_g = g-g_ii;
+  return normal-surface_g;
 }
 
 

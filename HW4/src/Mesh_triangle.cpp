@@ -76,9 +76,11 @@ bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   const float t = determinant(a_col1, a_col2, b);
   if (t > -intersection_test_epsilon) {
     hit_data.t = t;
+    Vector3 local_intersection_point = ray.point_at(t);
     hit_data.shape = this;
     float u = -1;
     float v = -1;
+    float perlin_value = -1;
     Vector3 normal;
     switch (triangle_shading_mode) {
       case tsm_smooth:
@@ -92,12 +94,14 @@ bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
         break;
     }
     if (texture_id != -1) {
+      //TODO: Maybe do this calculations outside to give different textures to different mesh instances like materials
       const Texture& texture = scene_->textures[texture_id];
       if(texture.is_perlin_noise())
       {
+        perlin_value = texture.get_perlin_noise()->get_value_at(local_intersection_point);
         if(texture.is_bump())
         {
-          
+          normal = texture.bump_normal(normal, local_intersection_point);
         }
       } else {
         Vector3 uva = scene_->texture_coord_data[index_0 + texture_offset];
@@ -130,6 +134,7 @@ bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
     }
     hit_data.u = u;
     hit_data.v = v;
+    hit_data.perlin_value = perlin_value;
     hit_data.normal = normal;
     return true;
   }

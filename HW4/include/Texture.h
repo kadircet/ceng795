@@ -14,7 +14,7 @@ class Texture {
   Vector3 blend_color(const Vector3& texture_color, const Vector3& diffuse_color) const;
   Vector3 bump_normal(const Vector3& dp_du, const Vector3& dp_dv, const Vector3& normal, const float u, const float v) const;
   //For perlin
-  Vector3 bump_normal(const Vector3& dp_du, const Vector3& dp_dv, const Vector3& normal, const Vector3& position) const;
+  Vector3 bump_normal(const Vector3& normal, const Vector3& position) const;
   enum Interpolation_type { it_nearest, it_bilinear };
   enum Decal_mode { dm_replace_kd, dm_blend_kd, dm_replace_all };
   enum Appearance { a_repeat, a_clamp };

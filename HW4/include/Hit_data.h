@@ -8,6 +8,7 @@ struct Hit_data {
   const Shape* shape;
   Vector3 normal;
   float u, v;  // for textures
+  float perlin_value; //for perlin noise
   // Material_data material;
 };
 #endif

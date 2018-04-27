@@ -159,10 +159,9 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       color = texture->get_color_at(hit_data.u, hit_data.v);
     } else {
       if (texture->is_perlin_noise()) {
-        float value =
-            texture->get_perlin_noise()->get_value_at(intersection_point);
+        float perlin_value = hit_data.perlin_value;
         diffuse_color =
-            texture->blend_color(Vector3(value, value, value), diffuse_color);
+            texture->blend_color(Vector3(perlin_value, perlin_value, perlin_value), diffuse_color);
       } else {
         Vector3 texture_color = texture->get_color_at(hit_data.u, hit_data.v)/texture->get_normalizer();
         diffuse_color = texture->blend_color(texture_color, diffuse_color);
@@ -826,14 +825,17 @@ Scene::Scene(const std::string& file_name) {
       arbitrary_transformation.make_identity();
     }
 
-    int texture_id = -1;
-    child = element->FirstChildElement("Texture");
+    //TODO: Until finding an elegant way, different textures for different mesh instances are not supported.
+    //Since bump_map and perlin_noise calculations are done in mesh_triangle of base_mesh
+    //Normal textures may work
+    int texture_id = base_mesh->texture_id;
+    /*child = element->FirstChildElement("Texture");
     if (child) {
       stream << child->GetText() << std::endl;
       stream >> texture_id;
       texture_id--;
     }
-    stream.clear();
+    stream.clear();*/
 
     child = element->FirstChildElement("Transformations");
     if (child) {
