@@ -55,17 +55,17 @@ bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   const Vertex& vertex_0 = scene_->get_vertex_at(index_0 + offset);
   const Vertex& vertex_1 = scene_->get_vertex_at(index_1 + offset);
   const Vertex& vertex_2 = scene_->get_vertex_at(index_2 + offset);
-  const Vector3& v_0 = vertex_0.get_vertex_position();
-  const Vector3& v_1 = vertex_1.get_vertex_position();
-  const Vector3& v_2 = vertex_2.get_vertex_position();
-  const Vector3 a_col1 = v_0 - v_1;
-  const Vector3 a_col2 = v_0 - v_2;
+  const Vector3& p_0 = vertex_0.get_vertex_position();
+  const Vector3& p_1 = vertex_1.get_vertex_position();
+  const Vector3& p_2 = vertex_2.get_vertex_position();
+  const Vector3 a_col1 = p_0 - p_1;
+  const Vector3 a_col2 = p_0 - p_2;
   const Vector3& a_col3 = ray.d;
   const float det_a = determinant(a_col1, a_col2, a_col3);
   if (det_a == 0.0f) {
     return false;
   }
-  const Vector3 b = (v_0 - ray.o) / det_a;
+  const Vector3 b = (p_0 - ray.o) / det_a;
   const float beta = determinant(b, a_col2, a_col3);
   if (beta < -intersection_test_epsilon) return false;
   const float gamma = determinant(a_col1, b, a_col3);
@@ -77,27 +77,60 @@ bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   if (t > -intersection_test_epsilon) {
     hit_data.t = t;
     hit_data.shape = this;
-    if (texture_id != -1 && !scene_->textures[texture_id].is_perlin_noise()) {
-      Vector3 ua = scene_->texture_coord_data[index_0 + texture_offset];
-      Vector3 ub = scene_->texture_coord_data[index_1 + texture_offset];
-      Vector3 uc = scene_->texture_coord_data[index_2 + texture_offset];
-      hit_data.u = ua.x + beta * (ub.x - ua.x) + gamma * (uc.x - ua.x);
-      hit_data.v = ua.y + beta * (ub.y - ua.y) + gamma * (uc.y - ua.y);
-    } else {
-      hit_data.u = -1;
-      hit_data.v = -1;
-    }
+    float u = -1;
+    float v = -1;
+    Vector3 normal;
     switch (triangle_shading_mode) {
       case tsm_smooth:
-        hit_data.normal = ((1 - beta - gamma) * vertex_0.get_vertex_normal() +
+        normal = ((1 - beta - gamma) * vertex_0.get_vertex_normal() +
                            beta * vertex_1.get_vertex_normal() +
                            gamma * vertex_2.get_vertex_normal())
-                              .normalize();
+        .normalize();
         break;
       case tsm_flat:
-        hit_data.normal = this->normal;
+        normal = this->normal;
         break;
     }
+    if (texture_id != -1) {
+      const Texture& texture = scene_->textures[texture_id];
+      if(texture.is_perlin_noise())
+      {
+        if(texture.is_bump())
+        {
+          
+        }
+      } else {
+        Vector3 uva = scene_->texture_coord_data[index_0 + texture_offset];
+        Vector3 uvb = scene_->texture_coord_data[index_1 + texture_offset];
+        Vector3 uvc = scene_->texture_coord_data[index_2 + texture_offset];
+        u = uva.x + beta * (uvb.x - uva.x) + gamma * (uvc.x - uva.x);
+        v = uva.y + beta * (uvb.y - uva.y) + gamma * (uvc.y - uva.y);
+        if(texture.is_bump())
+        {
+          //calculate gradients
+          float ub_ua = uvb.x-uva.x;
+          float uc_ua = uvc.x-uva.x;
+          float vb_va = uvb.y-uva.y;
+          float vc_va = uvc.y-uva.y;
+          Vector3 pb_pa = p_1-p_0;
+          Vector3 pc_pa = p_2-p_0;
+          float inverse_constant = (ub_ua*vc_va)-(vb_va*uc_ua);
+          if(inverse_constant == 0.0f) {
+            std::cerr<<"Inverse constant == 0 at triangle bump mapping" << std::endl;
+            inverse_constant = 0.000001f;
+          }
+          inverse_constant = 1.0f/inverse_constant;
+          Vector3 dp_du = inverse_constant * (vc_va*pb_pa-vb_va*pc_pa);
+          Vector3 dp_dv = inverse_constant * (ub_ua*pc_pa-uc_ua*pb_pa);
+          //std::cerr<<normal<<std::endl<<std::endl;
+          //std::cerr<<dp_dv.cross(dp_du).normalize()<<std::endl;
+          normal = texture.bump_normal(dp_du, dp_dv, normal, u, v);
+        }
+      }
+    }
+    hit_data.u = u;
+    hit_data.v = v;
+    hit_data.normal = normal;
     return true;
   }
   return false;

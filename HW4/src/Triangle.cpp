@@ -116,6 +116,7 @@ bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
           normal_transformation.multiply(this->normal, true).normalize();
       return true;
     }
+    //TODO ADD Texture support for primitive triangles
     return false;
   }
 }
