@@ -36,8 +36,11 @@ class Camera {
   Ray calculate_ray_at(float x, float y, float time = 0.0f) const {
     // For now, origin is top_left, right handed camera
     const Vector3 s =
-        top_left_corner + (x + 0.5f) * s_u_constant - (y + 0.5f) * s_v_constant;
-    return Ray(e, (s - e).normalize(), r_primary, time);
+        top_left_corner + x * s_u_constant - y * s_v_constant;
+    Ray ray(e, (s - e).normalize(), r_primary, time);
+    ray.bg_u = x/image_plane_.width;
+    ray.bg_v = y/image_plane_.height;
+    return ray;
   }
   Ray calculate_ray_at(float x, float y, float x_offset_ratio,
                        float y_offset_ratio, float time = 0.0f) const {
@@ -45,8 +48,11 @@ class Camera {
     Vector3 new_e =
         e + (u * x_offset_ratio + v * y_offset_ratio) * aperture_size_ * 0.5f;
     const Vector3 s =
-        top_left_corner + (x + 0.5f) * s_u_constant - (y + 0.5f) * s_v_constant;
-    return Ray(new_e, (s - new_e).normalize(), r_primary, time);
+        top_left_corner + x * s_u_constant - y * s_v_constant;
+    Ray ray(new_e, (s - new_e).normalize(), r_primary, time);
+    ray.bg_u = x/image_plane_.width;
+    ray.bg_v = y/image_plane_.height;
+    return ray;
   }
   const Image_plane& get_image_plane() const { return image_plane_; }
   const std::string& get_filename() const { return filename_; }

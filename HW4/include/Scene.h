@@ -22,6 +22,7 @@ class Pixel;
 class Scene {
  public:
   Vector3 background_color;
+  Texture* background_texture;
   float shadow_ray_epsilon;
   int max_recursion_depth;
   Vector3 ambient_light;

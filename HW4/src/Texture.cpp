@@ -7,7 +7,6 @@ Texture::Texture(const std::string& image_name,
                  const std::string& decal_mode, const std::string& appearance,
                  const float normalizer, const float scaling_factor,
                  const bool is_bump, const float bumpmap_multiplier) {
-  std::cout << decal_mode << std::endl;
   int n;
   if (image_name != std::string("perlin")) {
     texture_image_ = stbi_load(image_name.c_str(), &width_, &height_, &n, 3);

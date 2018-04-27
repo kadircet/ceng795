@@ -27,7 +27,7 @@ void Scene::render_image(int camera_index, Pixel* result,
     for (int j = starting_row; j < height; j += height_increase) {
       for (int i = 0; i < width; i++) {
         Vector3 color =
-            trace_ray(camera.calculate_ray_at(i, j), max_recursion_depth);
+            trace_ray(camera.calculate_ray_at(i+0.5f, j+0.5f), max_recursion_depth);
 #ifdef APPLY_FILTER_SINGLE_SAMPLE
         for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
           if (affected_j < 0 || affected_j >= height) {
@@ -75,20 +75,16 @@ void Scene::render_image(int camera_index, Pixel* result,
             float sample_x = (x + epsilon_x) / number_of_samples;
             float sample_y = (y + epsilon_y) / number_of_samples;
             if (aperture_size == 0.0f) {
-              // since calculate_ray_at adds 0.5 to the pixel number,
-              // subtracting 0.5
               color = trace_ray(camera.calculate_ray_at(
-                                    i + sample_x - 0.5f, j + sample_y - 0.5f,
+                                    i + sample_x, j + sample_y,
                                     time_distribution(time_generator)),
                                 max_recursion_depth);
             } else {
               float dof_epsilon_x = dof_distribution(dof_generator);
               float dof_epsilon_y = dof_distribution(dof_generator);
-              // since calculate_ray_at adds 0.5 to the pixel number,
-              // subtracting 0.5
               color = trace_ray(
                   camera.calculate_ray_at(
-                      i + sample_x - 0.5f, j + sample_y - 0.5f, dof_epsilon_x,
+                      i + sample_x, j + sample_y, dof_epsilon_x,
                       dof_epsilon_y, time_distribution(time_generator)),
                   max_recursion_depth);
             }
@@ -139,7 +135,11 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   if (!bvh->intersect(ray, hit_data)) {
     // Check if it is primary ray or mirror ray
     if (ray.ray_type == r_primary) {
-      return background_color;
+      if(background_texture){
+        return background_texture->get_color_at(ray.bg_u, ray.bg_v);
+      } else {
+        return background_color;
+      }
     }
     return color;
   }
@@ -380,7 +380,18 @@ Scene::Scene(const std::string& file_name) {
   stream >> background_color.x >> background_color.y >> background_color.z;
   debug("BackgroundColor is parsed");
   //
-
+  
+  // Get BackgroundTexture
+  element = root->FirstChildElement("BackgroundTexture");
+  if (element) {
+    const std::string& bg_tex_name = element->GetText();
+    background_texture = new Texture(bg_tex_name, "bilinear", "replace_all", "clamp", 255, 1.0f, false, 1.0f);
+  } else {
+    background_texture = nullptr;
+  }
+  debug("BackgroundTexture is parsed");
+  //
+  
   // Get ShadowRayEpsilon
   element = root->FirstChildElement("ShadowRayEpsilon");
   if (element) {
@@ -1321,6 +1332,10 @@ void Scene::parse_ply_tinyply(std::string filename,
 }
 Scene::~Scene() {
   delete bvh;
+  if(background_texture)
+  {
+    delete background_texture;
+  }
   size_t size = meshes.size();
   for (size_t i = 0; i < size; i++) {
     delete meshes[i];
