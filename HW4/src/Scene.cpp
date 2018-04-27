@@ -164,7 +164,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         diffuse_color =
             texture->blend_color(Vector3(value, value, value), diffuse_color);
       } else {
-        Vector3 texture_color = texture->get_color_at(hit_data.u, hit_data.v);
+        Vector3 texture_color = texture->get_color_at(hit_data.u, hit_data.v)/texture->get_normalizer();
         diffuse_color = texture->blend_color(texture_color, diffuse_color);
       }
     }
@@ -1007,7 +1007,7 @@ Scene::Scene(const std::string& file_name) {
       stream >> velocity.x >> velocity.y >> velocity.z;
     }
     stream.clear();
-    objects.push_back(new Sphere(
+    objects.push_back(new Sphere(this,
         center_of_sphere, radius, material_id, texture_id,
         Arbitrary_transformation(arbitrary_transformation), velocity));
     element = element->NextSiblingElement("Sphere");

@@ -131,8 +131,26 @@ Vector3 Texture::get_color_at(float u, float v) const {
     }
   }
 
-  if (decal_mode_ == dm_blend_kd || decal_mode_ == dm_replace_kd) {
-    color /= normalizer_;
-  }
   return color;
 }
+
+Vector3 Texture::bump_normal(const Vector3 &dp_du, const Vector3 &dp_dv, const Vector3 &normal, const Vector3 &position) const {
+  return 0.0f;
+}
+
+
+Vector3 Texture::bump_normal(const Vector3 &dp_du, const Vector3 &dp_dv, const Vector3 &normal, const float u, const float v) const {
+  const Vector3 color_u_v = get_color_at(u, v);
+  const Vector3 color_un_v = get_color_at(u+1.0f/width_, v);
+  const Vector3 color_u_vn = get_color_at(u, v+1.0f/height_);
+  const float value_u_v = (color_u_v.x+color_u_v.y+color_u_v.z) / 3.0f;
+  const float value_un_v = (color_un_v.x+color_un_v.y+color_un_v.z) / 3.0f;
+  const float value_u_vn = (color_u_vn.x+color_u_vn.y+color_u_vn.z) / 3.0f;
+  
+  const float dd_du = (value_un_v-value_u_v)*bumpmap_multiplier_;
+  const float dd_dv = (value_u_vn-value_u_v)*bumpmap_multiplier_;
+  const Vector3 dq_du = dp_du + dd_du*normal;
+  const Vector3 dq_dv = dp_dv + dd_dv*normal;
+  return dq_dv.cross(dq_du).normalize();
+}
+
