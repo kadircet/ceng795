@@ -26,8 +26,8 @@ void Scene::render_image(int camera_index, Pixel* result,
   if (number_of_samples == 1) {
     for (int j = starting_row; j < height; j += height_increase) {
       for (int i = 0; i < width; i++) {
-        Vector3 color =
-            trace_ray(camera.calculate_ray_at(i+0.5f, j+0.5f), max_recursion_depth);
+        Vector3 color = trace_ray(camera.calculate_ray_at(i + 0.5f, j + 0.5f),
+                                  max_recursion_depth);
 #ifdef APPLY_FILTER_SINGLE_SAMPLE
         for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
           if (affected_j < 0 || affected_j >= height) {
@@ -49,44 +49,34 @@ void Scene::render_image(int camera_index, Pixel* result,
       }
     }
   } else {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> ms_distribution(0.0f, 1.0f);
+    std::uniform_real_distribution<float> dof_distribution(-1.0f, 1.0f);
+    std::uniform_real_distribution<float> time_distribution(0.0f, 1.0f);
     for (int j = starting_row; j < height; j += height_increase) {
       for (int i = 0; i < width; i++) {
-        std::mt19937 ms_generator;
-        ms_generator.seed(
-            std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_real_distribution<float> ms_distribution(0.0f, 1.0f);
-
-        std::mt19937 dof_generator;
-        dof_generator.seed(
-            std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_real_distribution<float> dof_distribution(-1.0f, 1.0f);
-
-        std::mt19937 time_generator;
-        time_generator.seed(
-            std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_real_distribution<float> time_distribution(0.0f, 1.0f);
-
         float aperture_size = camera.get_aperture_size();
         for (int x = 0; x < number_of_samples; x++) {
           for (int y = 0; y < number_of_samples; y++) {
             Vector3 color;
-            float epsilon_x = ms_distribution(ms_generator);
-            float epsilon_y = ms_distribution(ms_generator);
+            float epsilon_x = ms_distribution(generator);
+            float epsilon_y = ms_distribution(generator);
             float sample_x = (x + epsilon_x) / number_of_samples;
             float sample_y = (y + epsilon_y) / number_of_samples;
             if (aperture_size == 0.0f) {
-              color = trace_ray(camera.calculate_ray_at(
-                                    i + sample_x, j + sample_y,
-                                    time_distribution(time_generator)),
-                                max_recursion_depth);
-            } else {
-              float dof_epsilon_x = dof_distribution(dof_generator);
-              float dof_epsilon_y = dof_distribution(dof_generator);
               color = trace_ray(
-                  camera.calculate_ray_at(
-                      i + sample_x, j + sample_y, dof_epsilon_x,
-                      dof_epsilon_y, time_distribution(time_generator)),
+                  camera.calculate_ray_at(i + sample_x, j + sample_y,
+                                          time_distribution(generator)),
                   max_recursion_depth);
+            } else {
+              float dof_epsilon_x = dof_distribution(generator);
+              float dof_epsilon_y = dof_distribution(generator);
+              color =
+                  trace_ray(camera.calculate_ray_at(
+                                i + sample_x, j + sample_y, dof_epsilon_x,
+                                dof_epsilon_y, time_distribution(generator)),
+                            max_recursion_depth);
             }
 
             for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
@@ -135,7 +125,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   if (!bvh->intersect(ray, hit_data)) {
     // Check if it is primary ray or mirror ray
     if (ray.ray_type == r_primary) {
-      if(background_texture){
+      if (background_texture) {
         return background_texture->get_color_at(ray.bg_u, ray.bg_v);
       } else {
         return background_color;
@@ -160,10 +150,11 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     } else {
       if (texture->is_perlin_noise()) {
         float perlin_value = hit_data.perlin_value;
-        diffuse_color =
-            texture->blend_color(Vector3(perlin_value, perlin_value, perlin_value), diffuse_color);
+        diffuse_color = texture->blend_color(
+            Vector3(perlin_value, perlin_value, perlin_value), diffuse_color);
       } else {
-        Vector3 texture_color = texture->get_color_at(hit_data.u, hit_data.v)/texture->get_normalizer();
+        Vector3 texture_color = texture->get_color_at(hit_data.u, hit_data.v) /
+                                texture->get_normalizer();
         diffuse_color = texture->blend_color(texture_color, diffuse_color);
       }
     }
@@ -380,18 +371,19 @@ Scene::Scene(const std::string& file_name) {
   stream >> background_color.x >> background_color.y >> background_color.z;
   debug("BackgroundColor is parsed");
   //
-  
+
   // Get BackgroundTexture
   element = root->FirstChildElement("BackgroundTexture");
   if (element) {
     const std::string& bg_tex_name = element->GetText();
-    background_texture = new Texture(bg_tex_name, "bilinear", "replace_all", "clamp", 255, 1.0f, false, 1.0f);
+    background_texture = new Texture(bg_tex_name, "bilinear", "replace_all",
+                                     "clamp", 255, 1.0f, false, 1.0f);
   } else {
     background_texture = nullptr;
   }
   debug("BackgroundTexture is parsed");
   //
-  
+
   // Get ShadowRayEpsilon
   element = root->FirstChildElement("ShadowRayEpsilon");
   if (element) {
@@ -836,9 +828,9 @@ Scene::Scene(const std::string& file_name) {
       arbitrary_transformation.make_identity();
     }
 
-    //TODO: Until finding an elegant way, different textures for different mesh instances are not supported.
-    //Since bump_map and perlin_noise calculations are done in mesh_triangle of base_mesh
-    //Normal textures may work
+    // TODO: Until finding an elegant way, different textures for different mesh
+    // instances are not supported. Since bump_map and perlin_noise calculations
+    // are done in mesh_triangle of base_mesh Normal textures may work
     int texture_id = base_mesh->texture_id;
     /*child = element->FirstChildElement("Texture");
     if (child) {
@@ -1020,8 +1012,8 @@ Scene::Scene(const std::string& file_name) {
       stream >> velocity.x >> velocity.y >> velocity.z;
     }
     stream.clear();
-    objects.push_back(new Sphere(this,
-        center_of_sphere, radius, material_id, texture_id,
+    objects.push_back(new Sphere(
+        this, center_of_sphere, radius, material_id, texture_id,
         Arbitrary_transformation(arbitrary_transformation), velocity));
     element = element->NextSiblingElement("Sphere");
   }
@@ -1065,13 +1057,14 @@ Scene::Scene(const std::string& file_name) {
       } else {
         stream << "1.0" << std::endl;
       }
-      float bumpmap_multiplier = element->FloatAttribute("bumpmapMultiplier", 1.0f);
+      float bumpmap_multiplier =
+          element->FloatAttribute("bumpmapMultiplier", 1.0f);
       bool is_bump = element->BoolAttribute("bumpmap", false);
       float normalizer, scaling_factor;
       stream >> normalizer >> scaling_factor;
-      textures.push_back(
-          std::move(Texture(image_name, interpolation_type, decal_mode,
-                            appearance, normalizer, scaling_factor,is_bump,bumpmap_multiplier)));
+      textures.push_back(std::move(
+          Texture(image_name, interpolation_type, decal_mode, appearance,
+                  normalizer, scaling_factor, is_bump, bumpmap_multiplier)));
 
       element = element->NextSiblingElement("Texture");
     }
@@ -1332,8 +1325,7 @@ void Scene::parse_ply_tinyply(std::string filename,
 }
 Scene::~Scene() {
   delete bvh;
-  if(background_texture)
-  {
+  if (background_texture) {
     delete background_texture;
   }
   size_t size = meshes.size();
