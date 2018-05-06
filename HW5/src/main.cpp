@@ -1,5 +1,6 @@
 #include <chrono>
 #include <iostream>
+#include <opencv2/highgui/highgui.hpp>
 #include <thread>
 #include "Pixel.h"
 #include "Scene.h"
@@ -49,31 +50,23 @@ int main(int argc, char* argv[]) {
     }
     tmo->apply_tmo(pixel_colors, tonemapped_colors);
     // Encode the image
-    unsigned char* image = new unsigned char[width * height * 4];
+    cv::Mat image = cv::Mat(height, width, CV_32FC3);
 
     int idx = 0;
     for (int j = 0; j < height; j++) {
       for (int i = 0; i < width; i++) {
         const Vector3 pixel = tonemapped_colors[j * width + i];
-        image[idx++] = (int)pixel.x;
-        image[idx++] = (int)pixel.y;
-        image[idx++] = (int)pixel.z;
-        image[idx++] = 255;
+        image.at<cv::Vec3f>(j, i)[0] = pixel.z;
+        image.at<cv::Vec3f>(j, i)[1] = pixel.y;
+        image.at<cv::Vec3f>(j, i)[2] = pixel.x;
       }
     }
     delete[] pixels;
-    unsigned error =
-        lodepng::encode(camera.get_filename().c_str(), image, width, height);
-
-    // if there's an error, display it
-    if (error)
-      std::cout << "encoder error " << error << ": "
-                << lodepng_error_text(error) << std::endl;
+    cv::imwrite(camera.get_filename(), image);
     std::cout << camera.get_filename() << "(" << width << "x" << height
               << ") is saved in: ";
     print_time_diff(std::cout, start, end);
     std::cout << std::endl;
-    delete[] image;
   }
   return 0;
 }
