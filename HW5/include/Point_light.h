@@ -11,6 +11,6 @@ class Point_light : public Light {
 
  private:
   Vector3 position_;
-  Vector3 intensity_value_;
+  Vector3 intensity_;
 };
 #endif

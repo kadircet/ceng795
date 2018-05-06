@@ -12,7 +12,7 @@ class Area_light : public Light {
 
  private:
   Vector3 position_;
-  Vector3 intensity_value_;
+  Vector3 intensity_;
   Vector3 edge_vector_1_;
   Vector3 edge_vector_2_;
   Vector3 normal_;

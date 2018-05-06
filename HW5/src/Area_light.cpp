@@ -5,7 +5,7 @@ Area_light::Area_light(const Vector3& position, const Vector3& intensity,
                        const Vector3& edge_vector_1,
                        const Vector3& edge_vector_2)
     : position_(position),
-      intensity_value_(intensity),
+      intensity_(intensity),
       edge_vector_1_(edge_vector_1),
       edge_vector_2_(edge_vector_2) {
   normal_ = edge_vector_1_.cross(edge_vector_2_).normalize();
@@ -30,6 +30,5 @@ Vector3 Area_light::intensity(const Vector3& from_point_to_light) const {
   float x = from_point_to_light.x;
   float y = from_point_to_light.y;
   float z = from_point_to_light.z;
-  return intensity_value_ * (reverse_w_i.dot(normal_)) /
-         (x * x + y * y + z * z);
+  return intensity_ * (reverse_w_i.dot(normal_)) / (x * x + y * y + z * z);
 }
