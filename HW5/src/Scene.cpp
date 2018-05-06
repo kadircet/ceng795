@@ -446,10 +446,31 @@ Scene::Scene(const std::string& file_name) {
       stream >> gaze.x >> gaze.y >> gaze.z;
       stream >> near_l >> near_r >> near_b >> near_t;
     }
-    cameras.push_back(Camera(up, gaze, position, number_of_samples, image_name,
-                             near_l, near_r, near_b, near_t, near_distance,
-                             image_width, image_height, focus_distance,
-                             aperture_size));
+    Tonemapping_operator* tmo = nullptr;
+    child = element->FirstChildElement("Tonemap");
+    if (child) {
+      auto tonemap_child = child->FirstChildElement("TMO");
+      if (std::string(tonemap_child->GetText()) ==
+          std::string("Photographic")) {
+        float image_key, saturation_percentage, saturation, gamma;
+        tonemap_child = element->FirstChildElement("TMOOptions");
+        stream << tonemap_child->GetText() << std::endl;
+        tonemap_child = element->FirstChildElement("Saturation");
+        stream << tonemap_child->GetText() << std::endl;
+        tonemap_child = element->FirstChildElement("Gamma");
+        stream << tonemap_child->GetText() << std::endl;
+        stream >> image_key >> saturation_percentage >> saturation >> gamma;
+        tmo = new Photographic_tmo(image_key, saturation_percentage, saturation,
+                                   gamma);
+      }
+    }
+    if (tmo == nullptr) {
+      tmo = new Null_tmo();
+    }
+    cameras.push_back(std::move(
+        Camera(up, gaze, position, number_of_samples, image_name, near_l,
+               near_r, near_b, near_t, near_distance, image_width, image_height,
+               focus_distance, aperture_size, tmo)));
     element = element->NextSiblingElement("Camera");
   }
   stream.clear();
@@ -615,7 +636,17 @@ Scene::Scene(const std::string& file_name) {
     stream >> material.transparency.x >> material.transparency.y >>
         material.transparency.z;
     stream >> material.refraction_index;
-
+    if (element->BoolAttribute("degamma", false)) {
+      material.ambient.x = pow(material.ambient.x, 0.45);
+      material.ambient.y = pow(material.ambient.y, 0.45);
+      material.ambient.z = pow(material.ambient.z, 0.45);
+      material.diffuse.x = pow(material.diffuse.x, 0.45);
+      material.diffuse.y = pow(material.diffuse.y, 0.45);
+      material.diffuse.z = pow(material.diffuse.z, 0.45);
+      material.specular.x = pow(material.specular.x, 0.45);
+      material.specular.y = pow(material.specular.y, 0.45);
+      material.specular.z = pow(material.specular.z, 0.45);
+    }
     materials.push_back(material);
     element = element->NextSiblingElement("Material");
   }

@@ -39,13 +39,22 @@ int main(int argc, char* argv[]) {
       delete[] threads;
     }
     auto end = std::chrono::system_clock::now();
+    std::vector<Vector3> pixel_colors;
+    std::vector<Vector3> tonemapped_colors;
+    const Tonemapping_operator* tmo = camera.get_tmo();
+    for (int j = 0; j < height; j++) {
+      for (int i = 0; i < width; i++) {
+        pixel_colors.push_back(pixels[j * width + i].get_color());
+      }
+    }
+    tmo->apply_tmo(pixel_colors, tonemapped_colors);
     // Encode the image
     unsigned char* image = new unsigned char[width * height * 4];
 
     int idx = 0;
     for (int j = 0; j < height; j++) {
       for (int i = 0; i < width; i++) {
-        const Vector3 pixel = pixels[j * width + i].get_color();
+        const Vector3 pixel = tonemapped_colors[j * width + i];
         image[idx++] = (int)pixel.x;
         image[idx++] = (int)pixel.y;
         image[idx++] = (int)pixel.z;

@@ -10,6 +10,8 @@
 #include "Material.h"
 #include "Mesh.h"
 #include "Mesh_triangle.h"
+#include "Null_tmo.h"
+#include "Photographic_tmo.h"
 #include "Point_light.h"
 #include "Shape.h"
 #include "Sphere.h"

@@ -1,9 +1,9 @@
 #ifndef PIXEL_H_
 #define PIXEL_H_
+#include <algorithm>
 #include <mutex>
 #include <thread>
 #include "Vector3.h"
-#include <algorithm>
 
 class Pixel {
  public:
@@ -21,10 +21,7 @@ class Pixel {
     if (weight == 0) {
       return Vector3(0.0f);
     } else {
-      result_color = color / weight;
-      return Vector3(std::min(255.0f, std::max(0.0f, result_color.x)),
-					std::min(255.0f, std::max(0.0f, result_color.y)),
-					std::min(255.0f, std::max(0.0f, result_color.z)));
+      return color / weight;
     }
   }
 
