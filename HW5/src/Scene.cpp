@@ -7,7 +7,7 @@
 #include "Pixel.h"
 #include "tinyply.h"
 #include "tinyxml2.h"
-#define APPLY_FILTER_SINGLE_SAMPLE
+//#define APPLY_FILTER_SINGLE_SAMPLE
 
 inline float gaussian_filter(float x, float y, float sigma) {
   return exp(-(x * x + y * y) / (2 * sigma * sigma)) /
@@ -191,12 +191,12 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         Vector3 incoming_radiance =
             light->incoming_radiance(light_direction_vec);
         if (has_diffuse) {
-          float diffuse_cos_theta = normal.dot(w_i);
+          float diffuse_cos_theta = std::max(0.0f, normal.dot(w_i));
           color += diffuse_color * incoming_radiance * diffuse_cos_theta;
         }
         if (has_specular) {
           float specular_cos_theta =
-              fmax(0.0f, normal.dot((w_0 + w_i).normalize()));
+              std::max(0.0f, normal.dot((w_0 + w_i).normalize()));
           color += material.specular * incoming_radiance *
                    pow(specular_cos_theta, material.phong_exponent);
         }
@@ -453,11 +453,11 @@ Scene::Scene(const std::string& file_name) {
       if (std::string(tonemap_child->GetText()) ==
           std::string("Photographic")) {
         float image_key, saturation_percentage, saturation, gamma;
-        tonemap_child = element->FirstChildElement("TMOOptions");
+        tonemap_child = child->FirstChildElement("TMOOptions");
         stream << tonemap_child->GetText() << std::endl;
-        tonemap_child = element->FirstChildElement("Saturation");
+        tonemap_child = child->FirstChildElement("Saturation");
         stream << tonemap_child->GetText() << std::endl;
-        tonemap_child = element->FirstChildElement("Gamma");
+        tonemap_child = child->FirstChildElement("Gamma");
         stream << tonemap_child->GetText() << std::endl;
         stream >> image_key >> saturation_percentage >> saturation >> gamma;
         tmo = new Photographic_tmo(image_key, saturation_percentage, saturation,
@@ -637,15 +637,15 @@ Scene::Scene(const std::string& file_name) {
         material.transparency.z;
     stream >> material.refraction_index;
     if (element->BoolAttribute("degamma", false)) {
-      material.ambient.x = pow(material.ambient.x, 0.45);
-      material.ambient.y = pow(material.ambient.y, 0.45);
-      material.ambient.z = pow(material.ambient.z, 0.45);
-      material.diffuse.x = pow(material.diffuse.x, 0.45);
-      material.diffuse.y = pow(material.diffuse.y, 0.45);
-      material.diffuse.z = pow(material.diffuse.z, 0.45);
-      material.specular.x = pow(material.specular.x, 0.45);
-      material.specular.y = pow(material.specular.y, 0.45);
-      material.specular.z = pow(material.specular.z, 0.45);
+      material.ambient.x = pow(material.ambient.x, 2.2f);
+      material.ambient.y = pow(material.ambient.y, 2.2f);
+      material.ambient.z = pow(material.ambient.z, 2.2f);
+      material.diffuse.x = pow(material.diffuse.x, 2.2f);
+      material.diffuse.y = pow(material.diffuse.y, 2.2f);
+      material.diffuse.z = pow(material.diffuse.z, 2.2f);
+      material.specular.x = pow(material.specular.x, 2.2f);
+      material.specular.y = pow(material.specular.y, 2.2f);
+      material.specular.z = pow(material.specular.z, 2.2f);
     }
     materials.push_back(material);
     element = element->NextSiblingElement("Material");
@@ -857,9 +857,10 @@ Scene::Scene(const std::string& file_name) {
       arbitrary_transformation.make_identity();
     }
 
-    // TODO: Until finding an elegant way, different textures for different mesh
-    // instances are not supported. Since bump_map and perlin_noise calculations
-    // are done in mesh_triangle of base_mesh Normal textures may work
+    // TODO: Until finding an elegant way, different textures for different
+    // mesh instances are not supported. Since bump_map and perlin_noise
+    // calculations are done in mesh_triangle of base_mesh Normal textures may
+    // work
     int texture_id = base_mesh->texture_id;
     /*child = element->FirstChildElement("Texture");
     if (child) {

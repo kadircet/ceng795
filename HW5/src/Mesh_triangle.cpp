@@ -1,4 +1,5 @@
 #include "Mesh_triangle.h"
+#include <algorithm>
 #include "Hit_data.h"
 #include "Scene.h"
 Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1,
@@ -24,21 +25,21 @@ Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1,
   Vector3 min_c = v_0;
   Vector3 max_c = v_0;
 
-  min_c.x = fmin(min_c.x, v_1.x);
-  min_c.y = fmin(min_c.y, v_1.y);
-  min_c.z = fmin(min_c.z, v_1.z);
+  min_c.x = std::min(min_c.x, v_1.x);
+  min_c.y = std::min(min_c.y, v_1.y);
+  min_c.z = std::min(min_c.z, v_1.z);
 
-  max_c.x = fmax(max_c.x, v_1.x);
-  max_c.y = fmax(max_c.y, v_1.y);
-  max_c.z = fmax(max_c.z, v_1.z);
+  max_c.x = std::max(max_c.x, v_1.x);
+  max_c.y = std::max(max_c.y, v_1.y);
+  max_c.z = std::max(max_c.z, v_1.z);
 
-  min_c.x = fmin(min_c.x, v_2.x);
-  min_c.y = fmin(min_c.y, v_2.y);
-  min_c.z = fmin(min_c.z, v_2.z);
+  min_c.x = std::min(min_c.x, v_2.x);
+  min_c.y = std::min(min_c.y, v_2.y);
+  min_c.z = std::min(min_c.z, v_2.z);
 
-  max_c.x = fmax(max_c.x, v_2.x);
-  max_c.y = fmax(max_c.y, v_2.y);
-  max_c.z = fmax(max_c.z, v_2.z);
+  max_c.x = std::max(max_c.x, v_2.x);
+  max_c.y = std::max(max_c.y, v_2.y);
+  max_c.z = std::max(max_c.z, v_2.z);
   bounding_box_ = Bounding_box(min_c, max_c);
 }
 

@@ -1,7 +1,7 @@
 #include "Texture.h"
 #define STB_IMAGE_IMPLEMENTATION
+#include <algorithm>
 #include "stb_image.h"
-
 Texture::Texture(const std::string& image_name,
                  const std::string& interpolation_type,
                  const std::string& decal_mode, const std::string& appearance,
@@ -56,11 +56,11 @@ Vector3 Texture::blend_color(const Vector3& texture_color,
 }
 Vector3 Texture::get_color_at(float u, float v) const {
   if (appearance_ == a_clamp) {
-    u = fmax(0.0f, fmin(1.0f, u));
-    v = fmax(0.0f, fmin(1.0f, v));
+    u = std::max(0.0f, std::min(1.0f, u));
+    v = std::max(0.0f, std::min(1.0f, v));
   } else {
-    u = fmax(0.0f, fmin(1.0f, u - floor(u)));
-    v = fmax(0.0f, fmin(1.0f, v - floor(v)));
+    u = std::max(0.0f, std::min(1.0f, u - floor(u)));
+    v = std::max(0.0f, std::min(1.0f, v - floor(v)));
   }
   u *= width_;
   if (u >= width_) u--;
@@ -133,31 +133,41 @@ Vector3 Texture::get_color_at(float u, float v) const {
   return color;
 }
 
-Vector3 Texture::bump_normal(const Vector3 &normal, const Vector3 &position) const {
+Vector3 Texture::bump_normal(const Vector3& normal,
+                             const Vector3& position) const {
   const float perlin_value = perlin_noise_->get_value_at(position);
   const float epsilon = 0.001;
-  const float dd_dx = (perlin_noise_->get_value_at(position+Vector3(epsilon,0,0)) - perlin_value) / epsilon;
-  const float dd_dy = (perlin_noise_->get_value_at(position+Vector3(0,epsilon,0)) - perlin_value) / epsilon;
-  const float dd_dz = (perlin_noise_->get_value_at(position+Vector3(0,0,epsilon)) - perlin_value) / epsilon;
-  Vector3 g = bumpmap_multiplier_*Vector3(dd_dx,dd_dy,dd_dz);
-  Vector3 g_ii = normal*(g.dot(normal));
-  Vector3 surface_g = g-g_ii;
-  return normal-surface_g;
+  const float dd_dx =
+      (perlin_noise_->get_value_at(position + Vector3(epsilon, 0, 0)) -
+       perlin_value) /
+      epsilon;
+  const float dd_dy =
+      (perlin_noise_->get_value_at(position + Vector3(0, epsilon, 0)) -
+       perlin_value) /
+      epsilon;
+  const float dd_dz =
+      (perlin_noise_->get_value_at(position + Vector3(0, 0, epsilon)) -
+       perlin_value) /
+      epsilon;
+  Vector3 g = bumpmap_multiplier_ * Vector3(dd_dx, dd_dy, dd_dz);
+  Vector3 g_ii = normal * (g.dot(normal));
+  Vector3 surface_g = g - g_ii;
+  return normal - surface_g;
 }
 
-
-Vector3 Texture::bump_normal(const Vector3 &dp_du, const Vector3 &dp_dv, const Vector3 &normal, const float u, const float v) const {
+Vector3 Texture::bump_normal(const Vector3& dp_du, const Vector3& dp_dv,
+                             const Vector3& normal, const float u,
+                             const float v) const {
   const Vector3 color_u_v = get_color_at(u, v);
-  const Vector3 color_un_v = get_color_at(u+1.0f/width_, v);
-  const Vector3 color_u_vn = get_color_at(u, v+1.0f/height_);
-  const float value_u_v = (color_u_v.x+color_u_v.y+color_u_v.z) / 3.0f;
-  const float value_un_v = (color_un_v.x+color_un_v.y+color_un_v.z) / 3.0f;
-  const float value_u_vn = (color_u_vn.x+color_u_vn.y+color_u_vn.z) / 3.0f;
-  
-  const float dd_du = (value_un_v-value_u_v)*bumpmap_multiplier_;
-  const float dd_dv = (value_u_vn-value_u_v)*bumpmap_multiplier_;
-  const Vector3 dq_du = dp_du + dd_du*normal;
-  const Vector3 dq_dv = dp_dv + dd_dv*normal;
+  const Vector3 color_un_v = get_color_at(u + 1.0f / width_, v);
+  const Vector3 color_u_vn = get_color_at(u, v + 1.0f / height_);
+  const float value_u_v = (color_u_v.x + color_u_v.y + color_u_v.z) / 3.0f;
+  const float value_un_v = (color_un_v.x + color_un_v.y + color_un_v.z) / 3.0f;
+  const float value_u_vn = (color_u_vn.x + color_u_vn.y + color_u_vn.z) / 3.0f;
+
+  const float dd_du = (value_un_v - value_u_v) * bumpmap_multiplier_;
+  const float dd_dv = (value_u_vn - value_u_v) * bumpmap_multiplier_;
+  const Vector3 dq_du = dp_du + dd_du * normal;
+  const Vector3 dq_dv = dp_dv + dd_dv * normal;
   return dq_dv.cross(dq_du).normalize();
 }
-

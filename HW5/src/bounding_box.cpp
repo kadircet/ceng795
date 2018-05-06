@@ -1,15 +1,16 @@
 #include "Bounding_box.h"
+#include <algorithm>
 #include "Matrix4x4.h"
 #include "Transformation.h"
 
 void Bounding_box::expand(const Bounding_box& bounding_box) {
-  min_corner.x = fmin(min_corner.x, bounding_box.min_corner.x);
-  min_corner.y = fmin(min_corner.y, bounding_box.min_corner.y);
-  min_corner.z = fmin(min_corner.z, bounding_box.min_corner.z);
+  min_corner.x = std::min(min_corner.x, bounding_box.min_corner.x);
+  min_corner.y = std::min(min_corner.y, bounding_box.min_corner.y);
+  min_corner.z = std::min(min_corner.z, bounding_box.min_corner.z);
 
-  max_corner.x = fmax(max_corner.x, bounding_box.max_corner.x);
-  max_corner.y = fmax(max_corner.y, bounding_box.max_corner.y);
-  max_corner.z = fmax(max_corner.z, bounding_box.max_corner.z);
+  max_corner.x = std::max(max_corner.x, bounding_box.max_corner.x);
+  max_corner.y = std::max(max_corner.y, bounding_box.max_corner.y);
+  max_corner.z = std::max(max_corner.z, bounding_box.max_corner.z);
 
   delta = max_corner - min_corner;
   center = (max_corner + min_corner) / 2.;
@@ -65,60 +66,60 @@ Bounding_box Bounding_box::apply_transform(const Bounding_box& bounding_box,
   Vector3 min_c = v000;
   Vector3 max_c = v000;
   /// v001
-  min_c.x = fmin(min_c.x, v001.x);
-  min_c.y = fmin(min_c.y, v001.y);
-  min_c.z = fmin(min_c.z, v001.z);
+  min_c.x = std::min(min_c.x, v001.x);
+  min_c.y = std::min(min_c.y, v001.y);
+  min_c.z = std::min(min_c.z, v001.z);
 
-  max_c.x = fmax(max_c.x, v001.x);
-  max_c.y = fmax(max_c.y, v001.y);
-  max_c.z = fmax(max_c.z, v001.z);
+  max_c.x = std::max(max_c.x, v001.x);
+  max_c.y = std::max(max_c.y, v001.y);
+  max_c.z = std::max(max_c.z, v001.z);
   /// v010
-  min_c.x = fmin(min_c.x, v010.x);
-  min_c.y = fmin(min_c.y, v010.y);
-  min_c.z = fmin(min_c.z, v010.z);
+  min_c.x = std::min(min_c.x, v010.x);
+  min_c.y = std::min(min_c.y, v010.y);
+  min_c.z = std::min(min_c.z, v010.z);
 
-  max_c.x = fmax(max_c.x, v010.x);
-  max_c.y = fmax(max_c.y, v010.y);
-  max_c.z = fmax(max_c.z, v010.z);
+  max_c.x = std::max(max_c.x, v010.x);
+  max_c.y = std::max(max_c.y, v010.y);
+  max_c.z = std::max(max_c.z, v010.z);
   /// v011
-  min_c.x = fmin(min_c.x, v011.x);
-  min_c.y = fmin(min_c.y, v011.y);
-  min_c.z = fmin(min_c.z, v011.z);
+  min_c.x = std::min(min_c.x, v011.x);
+  min_c.y = std::min(min_c.y, v011.y);
+  min_c.z = std::min(min_c.z, v011.z);
 
-  max_c.x = fmax(max_c.x, v011.x);
-  max_c.y = fmax(max_c.y, v011.y);
-  max_c.z = fmax(max_c.z, v011.z);
+  max_c.x = std::max(max_c.x, v011.x);
+  max_c.y = std::max(max_c.y, v011.y);
+  max_c.z = std::max(max_c.z, v011.z);
   /// v100
-  min_c.x = fmin(min_c.x, v100.x);
-  min_c.y = fmin(min_c.y, v100.y);
-  min_c.z = fmin(min_c.z, v100.z);
+  min_c.x = std::min(min_c.x, v100.x);
+  min_c.y = std::min(min_c.y, v100.y);
+  min_c.z = std::min(min_c.z, v100.z);
 
-  max_c.x = fmax(max_c.x, v100.x);
-  max_c.y = fmax(max_c.y, v100.y);
-  max_c.z = fmax(max_c.z, v100.z);
+  max_c.x = std::max(max_c.x, v100.x);
+  max_c.y = std::max(max_c.y, v100.y);
+  max_c.z = std::max(max_c.z, v100.z);
   /// v101
-  min_c.x = fmin(min_c.x, v101.x);
-  min_c.y = fmin(min_c.y, v101.y);
-  min_c.z = fmin(min_c.z, v101.z);
+  min_c.x = std::min(min_c.x, v101.x);
+  min_c.y = std::min(min_c.y, v101.y);
+  min_c.z = std::min(min_c.z, v101.z);
 
-  max_c.x = fmax(max_c.x, v101.x);
-  max_c.y = fmax(max_c.y, v101.y);
-  max_c.z = fmax(max_c.z, v101.z);
+  max_c.x = std::max(max_c.x, v101.x);
+  max_c.y = std::max(max_c.y, v101.y);
+  max_c.z = std::max(max_c.z, v101.z);
   /// v110
-  min_c.x = fmin(min_c.x, v110.x);
-  min_c.y = fmin(min_c.y, v110.y);
-  min_c.z = fmin(min_c.z, v110.z);
+  min_c.x = std::min(min_c.x, v110.x);
+  min_c.y = std::min(min_c.y, v110.y);
+  min_c.z = std::min(min_c.z, v110.z);
 
-  max_c.x = fmax(max_c.x, v110.x);
-  max_c.y = fmax(max_c.y, v110.y);
-  max_c.z = fmax(max_c.z, v110.z);
+  max_c.x = std::max(max_c.x, v110.x);
+  max_c.y = std::max(max_c.y, v110.y);
+  max_c.z = std::max(max_c.z, v110.z);
   /// v111
-  min_c.x = fmin(min_c.x, v111.x);
-  min_c.y = fmin(min_c.y, v111.y);
-  min_c.z = fmin(min_c.z, v111.z);
+  min_c.x = std::min(min_c.x, v111.x);
+  min_c.y = std::min(min_c.y, v111.y);
+  min_c.z = std::min(min_c.z, v111.z);
 
-  max_c.x = fmax(max_c.x, v111.x);
-  max_c.y = fmax(max_c.y, v111.y);
-  max_c.z = fmax(max_c.z, v111.z);
+  max_c.x = std::max(max_c.x, v111.x);
+  max_c.y = std::max(max_c.y, v111.y);
+  max_c.z = std::max(max_c.z, v111.z);
   return Bounding_box(min_c, max_c);
 }
