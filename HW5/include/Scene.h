@@ -6,6 +6,7 @@
 #include "Area_light.h"
 #include "Bounding_volume_hierarchy.h"
 #include "Camera.h"
+#include "Directional_light.h"
 #include "Material.h"
 #include "Mesh.h"
 #include "Mesh_triangle.h"

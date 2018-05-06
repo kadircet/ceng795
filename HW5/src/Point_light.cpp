@@ -10,7 +10,8 @@ Vector3 Point_light::direction_and_distance(const Vector3& from_point,
   return direction;
 }
 
-Vector3 Point_light::intensity(const Vector3& from_point_to_light) const {
+Vector3 Point_light::incoming_radiance(
+    const Vector3& from_point_to_light) const {
   float x = from_point_to_light.x;
   float y = from_point_to_light.y;
   float z = from_point_to_light.z;

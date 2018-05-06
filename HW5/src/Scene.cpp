@@ -188,15 +188,16 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
           continue;
         }
         //
-        Vector3 intensity = light->intensity(light_direction_vec);
+        Vector3 incoming_radiance =
+            light->incoming_radiance(light_direction_vec);
         if (has_diffuse) {
           float diffuse_cos_theta = normal.dot(w_i);
-          color += diffuse_color * intensity * diffuse_cos_theta;
+          color += diffuse_color * incoming_radiance * diffuse_cos_theta;
         }
         if (has_specular) {
           float specular_cos_theta =
               fmax(0.0f, normal.dot((w_0 + w_i).normalize()));
-          color += material.specular * intensity *
+          color += material.specular * incoming_radiance *
                    pow(specular_cos_theta, material.phong_exponent);
         }
       }
@@ -528,6 +529,23 @@ Scene::Scene(const std::string& file_name) {
                                     coverage_angle_in_radians,
                                     falloff_angle_in_radians));
     element = element->FirstChildElement("SpotLight");
+  }
+  stream.clear();
+
+  element = root->FirstChildElement("Lights");
+  element = element->FirstChildElement("DirectionalLight");
+  while (element) {
+    Vector3 direction;
+    Vector3 radiance;
+    float coverage_angle_in_radians, falloff_angle_in_radians;
+    child = element->FirstChildElement("Direction");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("Radiance");
+    stream << child->GetText() << std::endl;
+    stream >> direction.x >> direction.y >> direction.z;
+    stream >> radiance.x >> radiance.y >> radiance.z;
+    lights.push_back(new Directional_light(direction, radiance));
+    element = element->FirstChildElement("DirectionalLight");
   }
   stream.clear();
   debug("Lights are parsed");

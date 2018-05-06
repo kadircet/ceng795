@@ -25,7 +25,8 @@ Vector3 Area_light::direction_and_distance(const Vector3& from_point,
   return direction;
 }
 
-Vector3 Area_light::intensity(const Vector3& from_point_to_light) const {
+Vector3 Area_light::incoming_radiance(
+    const Vector3& from_point_to_light) const {
   Vector3 reverse_w_i = -(from_point_to_light.normalize());
   float x = from_point_to_light.x;
   float y = from_point_to_light.y;

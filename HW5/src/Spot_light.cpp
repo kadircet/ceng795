@@ -18,7 +18,8 @@ Vector3 Spot_light::direction_and_distance(const Vector3& from_point,
   return direction;
 }
 
-Vector3 Spot_light::intensity(const Vector3& from_point_to_light) const {
+Vector3 Spot_light::incoming_radiance(
+    const Vector3& from_point_to_light) const {
   Vector3 reverse_w_i = -(from_point_to_light.normalize());
   float cos_theta = reverse_w_i.dot(direction_);
   if (cos_theta > cos_half_of_falloff_angle_) {

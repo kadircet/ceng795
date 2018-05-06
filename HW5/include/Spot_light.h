@@ -9,7 +9,7 @@ class Spot_light : public Light {
              float falloff_angle_in_radians);
   Vector3 direction_and_distance(const Vector3& from_point,
                                  float& distance) const override;
-  Vector3 intensity(const Vector3& from_point_to_light) const override;
+  Vector3 incoming_radiance(const Vector3& from_point_to_light) const override;
 
  private:
   Vector3 position_;

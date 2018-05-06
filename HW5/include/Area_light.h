@@ -8,7 +8,7 @@ class Area_light : public Light {
              const Vector3& edge_vector_1, const Vector3& edge_vector_2);
   Vector3 direction_and_distance(const Vector3& from_point,
                                  float& distance) const override;
-  Vector3 intensity(const Vector3& from_point_to_light) const override;
+  Vector3 incoming_radiance(const Vector3& from_point_to_light) const override;
 
  private:
   Vector3 position_;
