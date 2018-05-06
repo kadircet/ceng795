@@ -166,17 +166,17 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       color += material.ambient * ambient_light;
 
       // point lights
-      for (const Point_light& point_light : point_lights) {
+      for (const Light* light : lights) {
         // Shadow check
         bool has_diffuse = material.diffuse != zero_vector;
         bool has_specular = material.specular != zero_vector;
         if (!has_diffuse && !has_specular) {
           continue;
         }
-        const Vector3 light_distance_vec =
-            point_light.position - intersection_point;
-        const Vector3 w_i = light_distance_vec.normalize();
-        float light_distance = light_distance_vec.length();
+        float light_distance;
+        const Vector3 light_direction_vec =
+            light->direction_and_distance(intersection_point, light_distance);
+        const Vector3 w_i = light_direction_vec.normalize();
         Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
                        r_shadow, ray.time);
         Hit_data shadow_hit_data;
@@ -188,65 +188,16 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
           continue;
         }
         //
-        float light_distance_squared = light_distance * light_distance;
+        Vector3 intensity = light->intensity(light_direction_vec);
         if (has_diffuse) {
           float diffuse_cos_theta = normal.dot(w_i);
-          color += diffuse_color * point_light.intensity * diffuse_cos_theta /
-                   light_distance_squared;
+          color += diffuse_color * intensity * diffuse_cos_theta;
         }
         if (has_specular) {
           float specular_cos_theta =
               fmax(0.0f, normal.dot((w_0 + w_i).normalize()));
-          color += material.specular * point_light.intensity *
-                   pow(specular_cos_theta, material.phong_exponent) /
-                   light_distance_squared;
-        }
-      }
-      // area lights
-      for (const Area_light& area_light : area_lights) {
-        bool has_diffuse = material.diffuse != zero_vector;
-        bool has_specular = material.specular != zero_vector;
-        if (!has_diffuse && !has_specular) {
-          continue;
-        }
-        std::mt19937 area_light_generator;
-        area_light_generator.seed(
-            std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_real_distribution<float> area_light_distribution(0.0f,
-                                                                      1.0f);
-        float epsilon_1 = area_light_distribution(area_light_generator);
-        float epsilon_2 = area_light_distribution(area_light_generator);
-        Vector3 position = area_light.position +
-                           area_light.edge_vector_1 * epsilon_1 +
-                           area_light.edge_vector_2 * epsilon_2;
-        // Shadow check
-        const Vector3 light_distance_vec = position - intersection_point;
-        const Vector3 w_i = light_distance_vec.normalize();
-        float light_distance = light_distance_vec.length();
-        Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
-                       r_shadow, ray.time);
-        Hit_data shadow_hit_data;
-        shadow_hit_data.t = std::numeric_limits<float>::infinity();
-        shadow_hit_data.shape = NULL;
-        bvh->intersect(shadow_ray, shadow_hit_data);
-        if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
-            shadow_hit_data.t > 0.0f) {
-          continue;
-        }
-        //
-        float light_distance_squared = light_distance * light_distance;
-        float intensity_cos = (-w_i).dot(area_light.normal);
-        if (has_diffuse) {
-          float diffuse_cos_theta = normal.dot(w_i);
-          color += diffuse_color * area_light.intensity * intensity_cos *
-                   diffuse_cos_theta / light_distance_squared;
-        }
-        if (has_specular) {
-          float specular_cos_theta =
-              fmax(0.0f, normal.dot((w_0 + w_i).normalize()));
-          color += material.specular * area_light.intensity * intensity_cos *
-                   pow(specular_cos_theta, material.phong_exponent) /
-                   light_distance_squared;
+          color += material.specular * intensity *
+                   pow(specular_cos_theta, material.phong_exponent);
         }
       }
     }
@@ -510,26 +461,28 @@ Scene::Scene(const std::string& file_name) {
   stream << child->GetText() << std::endl;
   stream >> ambient_light.x >> ambient_light.y >> ambient_light.z;
   element = element->FirstChildElement("PointLight");
-  Point_light point_light;
   while (element) {
+    Vector3 position;
+    Vector3 intensity;
     child = element->FirstChildElement("Position");
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("Intensity");
     stream << child->GetText() << std::endl;
 
-    stream >> point_light.position.x >> point_light.position.y >>
-        point_light.position.z;
-    stream >> point_light.intensity.x >> point_light.intensity.y >>
-        point_light.intensity.z;
+    stream >> position.x >> position.y >> position.z;
+    stream >> intensity.x >> intensity.y >> intensity.z;
 
-    point_lights.push_back(point_light);
+    lights.push_back(new Point_light(position, intensity));
     element = element->NextSiblingElement("PointLight");
   }
   stream.clear();
   element = root->FirstChildElement("Lights");
   element = element->FirstChildElement("AreaLight");
-  Area_light area_light;
+
   while (element) {
+    Vector3 position;
+    Vector3 intensity;
+    Vector3 edge_vector_1, edge_vector_2;
     child = element->FirstChildElement("Position");
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("Intensity");
@@ -538,17 +491,12 @@ Scene::Scene(const std::string& file_name) {
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("EdgeVector2");
     stream << child->GetText() << std::endl;
-    stream >> area_light.position.x >> area_light.position.y >>
-        area_light.position.z;
-    stream >> area_light.intensity.x >> area_light.intensity.y >>
-        area_light.intensity.z;
-    stream >> area_light.edge_vector_1.x >> area_light.edge_vector_1.y >>
-        area_light.edge_vector_1.z;
-    stream >> area_light.edge_vector_2.x >> area_light.edge_vector_2.y >>
-        area_light.edge_vector_2.z;
-    area_light.normal =
-        area_light.edge_vector_1.cross(area_light.edge_vector_2).normalize();
-    area_lights.push_back(area_light);
+    stream >> position.x >> position.y >> position.z;
+    stream >> intensity.x >> intensity.y >> intensity.z;
+    stream >> edge_vector_1.x >> edge_vector_1.y >> edge_vector_1.z;
+    stream >> edge_vector_2.x >> edge_vector_2.y >> edge_vector_2.z;
+    lights.push_back(
+        new Area_light(position, intensity, edge_vector_1, edge_vector_2));
     element = element->NextSiblingElement("AreaLight");
   }
   stream.clear();
@@ -1331,5 +1279,9 @@ Scene::~Scene() {
   size_t size = meshes.size();
   for (size_t i = 0; i < size; i++) {
     delete meshes[i];
+  }
+  size = lights.size();
+  for (size_t i = 0; i < size; i++) {
+    delete lights[i];
   }
 }

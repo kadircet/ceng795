@@ -1,9 +1,16 @@
 #pragma once
 #ifndef POINT_LIGHT_H
 #define POINT_LIGHT_H
-#include "Vector3.h"
-struct Point_light {
-  Vector3 position;
-  Vector3 intensity;
+#include "Light.h"
+class Point_light : public Light {
+ public:
+  Point_light(const Vector3& position, const Vector3& intensity);
+  Vector3 direction_and_distance(const Vector3& from_point,
+                                 float& distance) const override;
+  Vector3 intensity(const Vector3& from_point_to_light) const override;
+
+ private:
+  Vector3 position_;
+  Vector3 intensity_value_;
 };
 #endif
