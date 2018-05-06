@@ -12,6 +12,7 @@
 #include "Point_light.h"
 #include "Shape.h"
 #include "Sphere.h"
+#include "Spot_light.h"
 #include "Texture.h"
 #include "Transformation.h"
 #include "Triangle.h"

@@ -299,7 +299,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
 }
 
 Scene::Scene(const std::string& file_name) {
-  const float degree_to_pi = M_PI / 180.0f;
+  const float degrees_to_radians = M_PI / 180.0f;
   tinyxml2::XMLDocument file;
   std::stringstream stream;
 
@@ -429,7 +429,7 @@ Scene::Scene(const std::string& file_name) {
       float FovY;
       stream >> gaze_point.x >> gaze_point.y >> gaze_point.z;
       stream >> FovY;
-      float half_y_radian = degree_to_pi * FovY / 2;
+      float half_y_radian = degrees_to_radians * FovY / 2;
       near_t = tanf(half_y_radian) * near_distance;
       float aspect_ratio = 1.0f * image_width / image_height;
       near_b = -1.0f * near_t;
@@ -498,6 +498,36 @@ Scene::Scene(const std::string& file_name) {
     lights.push_back(
         new Area_light(position, intensity, edge_vector_1, edge_vector_2));
     element = element->NextSiblingElement("AreaLight");
+  }
+  stream.clear();
+
+  element = root->FirstChildElement("Lights");
+  element = element->FirstChildElement("SpotLight");
+  while (element) {
+    Vector3 position;
+    Vector3 intensity;
+    Vector3 direction;
+    float coverage_angle_in_radians, falloff_angle_in_radians;
+    child = element->FirstChildElement("Position");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("Intensity");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("Direction");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("CoverageAngle");
+    stream << child->GetText() << std::endl;
+    child = element->FirstChildElement("FalloffAngle");
+    stream << child->GetText() << std::endl;
+    stream >> position.x >> position.y >> position.z;
+    stream >> intensity.x >> intensity.y >> intensity.z;
+    stream >> direction.x >> direction.y >> direction.z;
+    stream >> coverage_angle_in_radians >> falloff_angle_in_radians;
+    coverage_angle_in_radians *= degrees_to_radians;
+    falloff_angle_in_radians *= degrees_to_radians;
+    lights.push_back(new Spot_light(position, intensity, direction,
+                                    coverage_angle_in_radians,
+                                    falloff_angle_in_radians));
+    element = element->FirstChildElement("SpotLight");
   }
   stream.clear();
   debug("Lights are parsed");
@@ -607,7 +637,7 @@ Scene::Scene(const std::string& file_name) {
       stream >> angle >> x >> y >> z;
       // TODO: maybe move?
       rotation_transformations.push_back(
-          Rotation(angle * degree_to_pi, x, y, z));
+          Rotation(angle * degrees_to_radians, x, y, z));
       child = child->NextSiblingElement("Rotation");
     }
   }
@@ -617,11 +647,13 @@ Scene::Scene(const std::string& file_name) {
 
   // Get VertexData
   element = root->FirstChildElement("VertexData");
-  stream << element->GetText() << std::endl;
-  Vector3 vertex;
-  while (!(stream >> vertex.x).eof()) {
-    stream >> vertex.y >> vertex.z;
-    vertex_data.push_back(Vertex(vertex));
+  if (element) {
+    stream << element->GetText() << std::endl;
+    Vector3 vertex;
+    while (!(stream >> vertex.x).eof()) {
+      stream >> vertex.y >> vertex.z;
+      vertex_data.push_back(Vertex(vertex));
+    }
   }
   stream.clear();
   debug("VertexData is parsed");
@@ -1190,9 +1222,9 @@ void Scene::parse_ply_tinyply(std::string filename,
         std::memcpy(verts.data(), ply_faces->buffer.get(), numFacesBytes);
         if (is_triangle) {
           for (; index < c; index++) {
-            int index_0 = verts[index * 3] + vertex_offset;
-            int index_1 = verts[index * 3] + vertex_offset;
-            int index_2 = verts[index * 3] + vertex_offset;
+            int index_0 = verts[index * 3];
+            int index_1 = verts[index * 3];
+            int index_2 = verts[index * 3];
             mesh_triangles.push_back(new Mesh_triangle(
                 this, index_0, index_1, index_2, vertex_offset, texture_offset,
                 material_id, texture_id, tsm));
@@ -1215,10 +1247,10 @@ void Scene::parse_ply_tinyply(std::string filename,
 
         } else if (is_quad) {
           for (; index < c; index++) {
-            int index_0 = verts[index * 4] + vertex_offset;
-            int index_1 = verts[index * 4 + 1] + vertex_offset;
-            int index_2 = verts[index * 4 + 2] + vertex_offset;
-            int index_3 = verts[index * 4 + 3] + vertex_offset;
+            int index_0 = verts[index * 4];
+            int index_1 = verts[index * 4 + 1];
+            int index_2 = verts[index * 4 + 2];
+            int index_3 = verts[index * 4 + 3];
 
             mesh_triangles.push_back(new Mesh_triangle(
                 this, index_0, index_1, index_3, vertex_offset, texture_offset,
