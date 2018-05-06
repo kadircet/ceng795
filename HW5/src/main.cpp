@@ -4,7 +4,6 @@
 #include <thread>
 #include "Pixel.h"
 #include "Scene.h"
-#include "lodepng.h"
 #include "timeutil.h"
 #define THREAD_MULTIPLIER 1
 
