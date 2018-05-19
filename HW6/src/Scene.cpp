@@ -138,7 +138,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   const Material& material = materials[shape->get_material_id()];
   const int texture_id = shape->get_texture_id();
   const Texture* texture = (texture_id == -1) ? NULL : &(textures[texture_id]);
-  const Vector3 w_0 = (ray.o - intersection_point).normalize();
+  const Vector3 w_o = (ray.o - intersection_point).normalize();
   const Vector3& normal = hit_data.normal;
 
   Vector3 diffuse_color = material.diffuse;
@@ -164,15 +164,13 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       // ambient light
       // Should it be outside of if statement?
       color += material.ambient * ambient_light;
-
+      BRDF* brdf = nullptr;
+      if (material.brdf_id != -1) {
+        brdf = brdfs[material.brdf_id];
+      }
       // point lights
       for (const Light* light : lights) {
         // Shadow check
-        bool has_diffuse = material.diffuse != zero_vector;
-        bool has_specular = material.specular != zero_vector;
-        if (!has_diffuse && !has_specular) {
-          continue;
-        }
         float light_distance;
         const Vector3 light_direction_vec =
             light->direction_and_distance(intersection_point, light_distance);
@@ -190,13 +188,16 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         //
         Vector3 incoming_radiance =
             light->incoming_radiance(light_direction_vec);
-        if (has_diffuse) {
+        if (brdf) {
+          color += incoming_radiance *
+                   brdf->get_reflectance(hit_data, diffuse_color,
+                                         material.specular, w_i, w_o);
+        } else {
           float diffuse_cos_theta = std::max(0.0f, normal.dot(w_i));
           color += diffuse_color * incoming_radiance * diffuse_cos_theta;
-        }
-        if (has_specular) {
+
           float specular_cos_theta =
-              std::max(0.0f, normal.dot((w_0 + w_i).normalize()));
+              std::max(0.0f, normal.dot((w_o + w_i).normalize()));
           color += material.specular * incoming_radiance *
                    pow(specular_cos_theta, material.phong_exponent);
         }
@@ -205,13 +206,13 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     // Reflection
     if (material.mirror != zero_vector && current_recursion_depth > 0) {
       if (material.roughness == 0.0f) {
-        const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
+        const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
         Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
                        r_reflection, ray.time);
         color += material.mirror *
                  trace_ray(mirror_ray, current_recursion_depth - 1);
       } else {
-        const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
+        const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
         Vector3 r_prime;
         if (w_r.x < w_r.y && w_r.x < w_r.z) {
           r_prime = Vector3(1.0f, w_r.y, w_r.z);
@@ -247,7 +248,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
 
     // Refraction
     if (material.transparency != zero_vector && current_recursion_depth > 0) {
-      const Vector3 w_r = ((2 * normal.dot(w_0) * normal) - w_0).normalize();
+      const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
       Vector3 transmission_direction = zero_vector;
       float cos_theta = 0.0f;
       Vector3 k(0.0f);
@@ -477,6 +478,38 @@ Scene::Scene(const std::string& file_name) {
   debug("Cameras are parsed");
   // Cameras End
 
+  // Get BRDFs
+  system("pause");
+  element = root->FirstChildElement("BRDFs");
+  if (element) {
+    int brdf_count = 0;
+    for (auto child = element->FirstChild(); child;
+         child = child->NextSibling()) {
+      brdf_count++;
+    }
+    brdfs.resize(brdf_count);
+    auto original_phong_element = element->FirstChildElement("OriginalPhong");
+    while (original_phong_element) {
+      int id = original_phong_element->IntAttribute("id") - 1;
+      bool normalized =
+          original_phong_element->BoolAttribute("normalized", false);
+      auto child = original_phong_element->FirstChildElement("Exponent");
+      if (child) {
+        stream << child->GetText() << std::endl;
+      } else {
+        stream << "1" << std::endl;
+      }
+      float exponent;
+      stream >> exponent;
+      brdfs[id] = new Phong_BRDF(exponent, normalized);
+      original_phong_element =
+          original_phong_element->NextSiblingElement("OriginalPhong");
+    }
+    stream.clear();
+  }
+  debug("BRDFs are parsed");
+  // BRDFs end
+
   // Get Lights
   element = root->FirstChildElement("Lights");
   auto child = element->FirstChildElement("AmbientLight");
@@ -626,6 +659,7 @@ Scene::Scene(const std::string& file_name) {
     } else {
       stream << "1.0" << std::endl;
     }
+    material.brdf_id = element->IntAttribute("BRDF", 0) - 1;
 
     stream >> material.ambient.x >> material.ambient.y >> material.ambient.z;
     stream >> material.diffuse.x >> material.diffuse.y >> material.diffuse.z;
@@ -1365,5 +1399,9 @@ Scene::~Scene() {
   size = lights.size();
   for (size_t i = 0; i < size; i++) {
     delete lights[i];
+  }
+  size = brdfs.size();
+  for (size_t i = 0; i < size; i++) {
+    delete brdfs[i];
   }
 }

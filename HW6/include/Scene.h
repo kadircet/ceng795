@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "Area_light.h"
+#include "BRDF.h"
 #include "Bounding_volume_hierarchy.h"
 #include "Camera.h"
 #include "Directional_light.h"
@@ -11,6 +12,7 @@
 #include "Mesh.h"
 #include "Mesh_triangle.h"
 #include "Null_tmo.h"
+#include "Phong_BRDF.h"
 #include "Photographic_tmo.h"
 #include "Point_light.h"
 #include "Shape.h"
@@ -41,6 +43,7 @@ class Scene {
   std::vector<Vertex> vertex_data;
   std::vector<Vector3> texture_coord_data;
   std::vector<Texture> textures;
+  std::vector<BRDF*> brdfs;
   inline const Vertex& get_vertex_at(int index) const {
     return vertex_data[index];
   }
