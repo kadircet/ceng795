@@ -559,6 +559,29 @@ Scene::Scene(const std::string& file_name) {
               "ModifiedBlinnPhong");
     }
     stream.clear();
+    auto torrance_sparrow_element =
+        element->FirstChildElement("TorranceSparrow");
+    while (torrance_sparrow_element) {
+      int id = torrance_sparrow_element->IntAttribute("id") - 1;
+      auto child = torrance_sparrow_element->FirstChildElement("Exponent");
+      if (child) {
+        stream << child->GetText() << std::endl;
+      } else {
+        stream << "1" << std::endl;
+      }
+      child = torrance_sparrow_element->FirstChildElement("RefractiveIndex");
+      if (child) {
+        stream << child->GetText() << std::endl;
+      } else {
+        stream << "1" << std::endl;
+      }
+      float exponent, refractive_index;
+      stream >> exponent >> refractive_index;
+      brdfs[id] = new Torrance_sparrow_BRDF(exponent, refractive_index);
+      torrance_sparrow_element =
+          torrance_sparrow_element->NextSiblingElement("TorranceSparrow");
+    }
+    stream.clear();
   }
   debug("BRDFs are parsed");
   // BRDFs end

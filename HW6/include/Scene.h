@@ -22,6 +22,7 @@
 #include "Sphere.h"
 #include "Spot_light.h"
 #include "Texture.h"
+#include "Torrance_sparrow_BRDF.h"
 #include "Transformation.h"
 #include "Triangle.h"
 #include "Vector3.h"
