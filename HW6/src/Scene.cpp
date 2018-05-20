@@ -520,6 +520,22 @@ Scene::Scene(const std::string& file_name) {
       modified_phong_element =
           modified_phong_element->NextSiblingElement("OriginalPhong");
     }
+    auto original_blinn_phong_element =
+        element->FirstChildElement("OriginalBlinnPhong");
+    while (original_blinn_phong_element) {
+      int id = original_blinn_phong_element->IntAttribute("id") - 1;
+      auto child = original_blinn_phong_element->FirstChildElement("Exponent");
+      if (child) {
+        stream << child->GetText() << std::endl;
+      } else {
+        stream << "1" << std::endl;
+      }
+      float exponent;
+      stream >> exponent;
+      brdfs[id] = new Blinn_phong_BRDF(exponent);
+      original_blinn_phong_element =
+          original_blinn_phong_element->NextSiblingElement("OriginalPhong");
+    }
     stream.clear();
   }
   debug("BRDFs are parsed");

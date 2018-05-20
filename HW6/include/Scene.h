@@ -5,6 +5,7 @@
 #include <vector>
 #include "Area_light.h"
 #include "BRDF.h"
+#include "Blinn_phong_BRDF.h"
 #include "Bounding_volume_hierarchy.h"
 #include "Camera.h"
 #include "Directional_light.h"
