@@ -188,13 +188,13 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         //
         Vector3 incoming_radiance =
             light->incoming_radiance(light_direction_vec);
+        float cos_theta_i = std::max(0.0f, normal.dot(w_i));
         if (brdf) {
-          color += incoming_radiance *
+          color += incoming_radiance * cos_theta_i *
                    brdf->get_reflectance(hit_data, diffuse_color,
                                          material.specular, w_i, w_o);
         } else {
-          float diffuse_cos_theta = std::max(0.0f, normal.dot(w_i));
-          color += diffuse_color * incoming_radiance * diffuse_cos_theta;
+          color += diffuse_color * incoming_radiance * cos_theta_i;
 
           float specular_cos_theta =
               std::max(0.0f, normal.dot((w_o + w_i).normalize()));
@@ -479,7 +479,6 @@ Scene::Scene(const std::string& file_name) {
   // Cameras End
 
   // Get BRDFs
-  system("pause");
   element = root->FirstChildElement("BRDFs");
   if (element) {
     int brdf_count = 0;
@@ -491,8 +490,6 @@ Scene::Scene(const std::string& file_name) {
     auto original_phong_element = element->FirstChildElement("OriginalPhong");
     while (original_phong_element) {
       int id = original_phong_element->IntAttribute("id") - 1;
-      bool normalized =
-          original_phong_element->BoolAttribute("normalized", false);
       auto child = original_phong_element->FirstChildElement("Exponent");
       if (child) {
         stream << child->GetText() << std::endl;
@@ -501,9 +498,27 @@ Scene::Scene(const std::string& file_name) {
       }
       float exponent;
       stream >> exponent;
-      brdfs[id] = new Phong_BRDF(exponent, normalized);
+      brdfs[id] = new Phong_BRDF(exponent);
       original_phong_element =
           original_phong_element->NextSiblingElement("OriginalPhong");
+    }
+    stream.clear();
+    auto modified_phong_element = element->FirstChildElement("ModifiedPhong");
+    while (modified_phong_element) {
+      int id = modified_phong_element->IntAttribute("id") - 1;
+      bool normalized =
+          modified_phong_element->BoolAttribute("normalized", false);
+      auto child = modified_phong_element->FirstChildElement("Exponent");
+      if (child) {
+        stream << child->GetText() << std::endl;
+      } else {
+        stream << "1" << std::endl;
+      }
+      float exponent;
+      stream >> exponent;
+      brdfs[id] = new Modified_phong_BRDF(exponent, normalized);
+      modified_phong_element =
+          modified_phong_element->NextSiblingElement("OriginalPhong");
     }
     stream.clear();
   }
