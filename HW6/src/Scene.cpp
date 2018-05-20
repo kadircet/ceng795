@@ -518,8 +518,9 @@ Scene::Scene(const std::string& file_name) {
       stream >> exponent;
       brdfs[id] = new Modified_phong_BRDF(exponent, normalized);
       modified_phong_element =
-          modified_phong_element->NextSiblingElement("OriginalPhong");
+          modified_phong_element->NextSiblingElement("ModifiedPhong");
     }
+    stream.clear();
     auto original_blinn_phong_element =
         element->FirstChildElement("OriginalBlinnPhong");
     while (original_blinn_phong_element) {
@@ -534,7 +535,28 @@ Scene::Scene(const std::string& file_name) {
       stream >> exponent;
       brdfs[id] = new Blinn_phong_BRDF(exponent);
       original_blinn_phong_element =
-          original_blinn_phong_element->NextSiblingElement("OriginalPhong");
+          original_blinn_phong_element->NextSiblingElement(
+              "OriginalBlinnPhong");
+    }
+    stream.clear();
+    auto modified_blinn_phong_element =
+        element->FirstChildElement("ModifiedBlinnPhong");
+    while (modified_blinn_phong_element) {
+      int id = modified_blinn_phong_element->IntAttribute("id") - 1;
+      bool normalized =
+          modified_blinn_phong_element->BoolAttribute("normalized", false);
+      auto child = modified_blinn_phong_element->FirstChildElement("Exponent");
+      if (child) {
+        stream << child->GetText() << std::endl;
+      } else {
+        stream << "1" << std::endl;
+      }
+      float exponent;
+      stream >> exponent;
+      brdfs[id] = new Modified_blinn_phong_BRDF(exponent, normalized);
+      modified_blinn_phong_element =
+          modified_blinn_phong_element->NextSiblingElement(
+              "ModifiedBlinnPhong");
     }
     stream.clear();
   }

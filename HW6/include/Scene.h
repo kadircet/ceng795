@@ -12,6 +12,7 @@
 #include "Material.h"
 #include "Mesh.h"
 #include "Mesh_triangle.h"
+#include "Modified_blinn_phong_BRDF.h"
 #include "Modified_phong_BRDF.h"
 #include "Null_tmo.h"
 #include "Phong_BRDF.h"
