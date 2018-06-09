@@ -365,7 +365,7 @@ Scene::Scene(const std::string& file_name) {
   stream >> max_recursion_depth;
   debug("MaxRecursionDepth is parsed");
   //
-
+  system("pause");
   // Get Cameras
   element = root->FirstChildElement("Cameras");
   element = element->FirstChildElement("Camera");
@@ -422,7 +422,7 @@ Scene::Scene(const std::string& file_name) {
 
     const char* camera_type = element->Attribute("type");
     if (camera_type && std::string(camera_type) == std::string("simple")) {
-      child = element->FirstChildElement("GazePoint");
+      child = element->FirstChildElement("Gaze");
       stream << child->GetText() << std::endl;
       child = element->FirstChildElement("FovY");
       stream << child->GetText() << std::endl;
@@ -459,7 +459,11 @@ Scene::Scene(const std::string& file_name) {
         tonemap_child = child->FirstChildElement("Saturation");
         stream << tonemap_child->GetText() << std::endl;
         tonemap_child = child->FirstChildElement("Gamma");
-        stream << tonemap_child->GetText() << std::endl;
+        if (tonemap_child) {
+          stream << tonemap_child->GetText() << std::endl;
+        } else {
+          stream << "2.2" << std::endl;
+        }
         stream >> image_key >> saturation_percentage >> saturation >> gamma;
         tmo = new Photographic_tmo(image_key, saturation_percentage, saturation,
                                    gamma);
@@ -588,96 +592,109 @@ Scene::Scene(const std::string& file_name) {
 
   // Get Lights
   element = root->FirstChildElement("Lights");
-  auto child = element->FirstChildElement("AmbientLight");
-  stream << child->GetText() << std::endl;
-  stream >> ambient_light.x >> ambient_light.y >> ambient_light.z;
-  element = element->FirstChildElement("PointLight");
-  while (element) {
-    Vector3 position;
-    Vector3 intensity;
-    child = element->FirstChildElement("Position");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("Intensity");
-    stream << child->GetText() << std::endl;
+  if (element) {
+    auto child = element->FirstChildElement("AmbientLight");
+    if (child) {
+      stream << child->GetText() << std::endl;
+    } else {
+      stream << "0 0 0" << std::endl;
+    }
+    stream >> ambient_light.x >> ambient_light.y >> ambient_light.z;
+    element = element->FirstChildElement("PointLight");
+    while (element) {
+      Vector3 position;
+      Vector3 intensity;
+      child = element->FirstChildElement("Position");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("Intensity");
+      stream << child->GetText() << std::endl;
 
-    stream >> position.x >> position.y >> position.z;
-    stream >> intensity.x >> intensity.y >> intensity.z;
+      stream >> position.x >> position.y >> position.z;
+      stream >> intensity.x >> intensity.y >> intensity.z;
 
-    lights.push_back(new Point_light(position, intensity));
-    element = element->NextSiblingElement("PointLight");
+      lights.push_back(new Point_light(position, intensity));
+      element = element->NextSiblingElement("PointLight");
+    }
+    stream.clear();
   }
-  stream.clear();
-  element = root->FirstChildElement("Lights");
-  element = element->FirstChildElement("AreaLight");
-
-  while (element) {
-    Vector3 position;
-    Vector3 intensity;
-    Vector3 edge_vector_1, edge_vector_2;
-    child = element->FirstChildElement("Position");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("Intensity");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("EdgeVector1");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("EdgeVector2");
-    stream << child->GetText() << std::endl;
-    stream >> position.x >> position.y >> position.z;
-    stream >> intensity.x >> intensity.y >> intensity.z;
-    stream >> edge_vector_1.x >> edge_vector_1.y >> edge_vector_1.z;
-    stream >> edge_vector_2.x >> edge_vector_2.y >> edge_vector_2.z;
-    lights.push_back(
-        new Area_light(position, intensity, edge_vector_1, edge_vector_2));
-    element = element->NextSiblingElement("AreaLight");
-  }
-  stream.clear();
 
   element = root->FirstChildElement("Lights");
-  element = element->FirstChildElement("SpotLight");
-  while (element) {
-    Vector3 position;
-    Vector3 intensity;
-    Vector3 direction;
-    float coverage_angle_in_radians, falloff_angle_in_radians;
-    child = element->FirstChildElement("Position");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("Intensity");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("Direction");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("CoverageAngle");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("FalloffAngle");
-    stream << child->GetText() << std::endl;
-    stream >> position.x >> position.y >> position.z;
-    stream >> intensity.x >> intensity.y >> intensity.z;
-    stream >> direction.x >> direction.y >> direction.z;
-    stream >> coverage_angle_in_radians >> falloff_angle_in_radians;
-    coverage_angle_in_radians *= degrees_to_radians;
-    falloff_angle_in_radians *= degrees_to_radians;
-    lights.push_back(new Spot_light(position, intensity, direction,
-                                    coverage_angle_in_radians,
-                                    falloff_angle_in_radians));
+  if (element) {
+    element = element->FirstChildElement("AreaLight");
+
+    while (element) {
+      Vector3 position;
+      Vector3 intensity;
+      Vector3 edge_vector_1, edge_vector_2;
+      auto child = element->FirstChildElement("Position");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("Intensity");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("EdgeVector1");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("EdgeVector2");
+      stream << child->GetText() << std::endl;
+      stream >> position.x >> position.y >> position.z;
+      stream >> intensity.x >> intensity.y >> intensity.z;
+      stream >> edge_vector_1.x >> edge_vector_1.y >> edge_vector_1.z;
+      stream >> edge_vector_2.x >> edge_vector_2.y >> edge_vector_2.z;
+      lights.push_back(
+          new Area_light(position, intensity, edge_vector_1, edge_vector_2));
+      element = element->NextSiblingElement("AreaLight");
+    }
+    stream.clear();
+  }
+
+  element = root->FirstChildElement("Lights");
+  if (element) {
     element = element->FirstChildElement("SpotLight");
+    while (element) {
+      Vector3 position;
+      Vector3 intensity;
+      Vector3 direction;
+      float coverage_angle_in_radians, falloff_angle_in_radians;
+      auto child = element->FirstChildElement("Position");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("Intensity");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("Direction");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("CoverageAngle");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("FalloffAngle");
+      stream << child->GetText() << std::endl;
+      stream >> position.x >> position.y >> position.z;
+      stream >> intensity.x >> intensity.y >> intensity.z;
+      stream >> direction.x >> direction.y >> direction.z;
+      stream >> coverage_angle_in_radians >> falloff_angle_in_radians;
+      coverage_angle_in_radians *= degrees_to_radians;
+      falloff_angle_in_radians *= degrees_to_radians;
+      lights.push_back(new Spot_light(position, intensity, direction,
+                                      coverage_angle_in_radians,
+                                      falloff_angle_in_radians));
+      element = element->FirstChildElement("SpotLight");
+    }
+    stream.clear();
   }
-  stream.clear();
 
   element = root->FirstChildElement("Lights");
-  element = element->FirstChildElement("DirectionalLight");
-  while (element) {
-    Vector3 direction;
-    Vector3 radiance;
-    float coverage_angle_in_radians, falloff_angle_in_radians;
-    child = element->FirstChildElement("Direction");
-    stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("Radiance");
-    stream << child->GetText() << std::endl;
-    stream >> direction.x >> direction.y >> direction.z;
-    stream >> radiance.x >> radiance.y >> radiance.z;
-    lights.push_back(new Directional_light(direction, radiance));
+  if (element) {
     element = element->FirstChildElement("DirectionalLight");
+    while (element) {
+      Vector3 direction;
+      Vector3 radiance;
+      float coverage_angle_in_radians, falloff_angle_in_radians;
+      auto child = element->FirstChildElement("Direction");
+      stream << child->GetText() << std::endl;
+      child = element->FirstChildElement("Radiance");
+      stream << child->GetText() << std::endl;
+      stream >> direction.x >> direction.y >> direction.z;
+      stream >> radiance.x >> radiance.y >> radiance.z;
+      lights.push_back(new Directional_light(direction, radiance));
+      element = element->FirstChildElement("DirectionalLight");
+    }
+    stream.clear();
   }
-  stream.clear();
   debug("Lights are parsed");
   // Lights End
 
@@ -686,7 +703,7 @@ Scene::Scene(const std::string& file_name) {
   element = element->FirstChildElement("Material");
   Material material;
   while (element) {
-    child = element->FirstChildElement("AmbientReflectance");
+    auto child = element->FirstChildElement("AmbientReflectance");
     if (child) {
       stream << child->GetText() << std::endl;
     } else {
@@ -769,7 +786,7 @@ Scene::Scene(const std::string& file_name) {
 
   if (element) {
     // Get Scalings
-    child = element->FirstChildElement("Scaling");
+    auto child = element->FirstChildElement("Scaling");
     while (child) {
       float x, y, z;
       stream << child->GetText() << std::endl;
@@ -839,7 +856,7 @@ Scene::Scene(const std::string& file_name) {
   element = element->FirstChildElement("Mesh");
 
   while (element) {
-    child = element->FirstChildElement("Material");
+    auto child = element->FirstChildElement("Material");
     int material_id;
     stream << child->GetText() << std::endl;
     stream >> material_id;
@@ -953,7 +970,7 @@ Scene::Scene(const std::string& file_name) {
   element = element->FirstChildElement("MeshInstance");
   while (element) {
     Mesh* base_mesh = meshes[element->IntAttribute("baseMeshId") - 1];
-    child = element->FirstChildElement("Material");
+    auto child = element->FirstChildElement("Material");
     int material_id;
     stream << child->GetText() << std::endl;
     stream >> material_id;
@@ -1030,7 +1047,7 @@ Scene::Scene(const std::string& file_name) {
   element = element->FirstChildElement("Triangle");
   while (element) {
     int material_id;
-    child = element->FirstChildElement("Material");
+    auto child = element->FirstChildElement("Material");
     stream << child->GetText() << std::endl;
     stream >> material_id;
     material_id--;
@@ -1090,7 +1107,7 @@ Scene::Scene(const std::string& file_name) {
   element = element->FirstChildElement("Sphere");
   while (element) {
     int material_id;
-    child = element->FirstChildElement("Material");
+    auto child = element->FirstChildElement("Material");
     stream << child->GetText() << std::endl;
     stream >> material_id;
     material_id--;
@@ -1165,7 +1182,7 @@ Scene::Scene(const std::string& file_name) {
     element = element->FirstChildElement("Texture");
     while (element) {
       std::string image_name, interpolation_type, decal_mode, appearance;
-      child = element->FirstChildElement("ImageName");
+      auto child = element->FirstChildElement("ImageName");
       image_name = child->GetText();
       child = element->FirstChildElement("Interpolation");
       if (child) {
