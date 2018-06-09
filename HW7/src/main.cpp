@@ -49,12 +49,30 @@ int main(int argc, char* argv[]) {
     }
     tmo->apply_tmo(pixel_colors, tonemapped_colors);
     // Encode the image
+
+    // sRGB correction
+    // no parsing yet :P
+    if (true) {
+      constexpr float inverse = 1.0f / 2.4f;
+      for (int j = 0; j < height; j++) {
+        for (int i = 0; i < width; i++) {
+          Vector3 color_linear = tonemapped_colors[j * width + i] / 255.0f;
+          color_linear.x = 1.055f * std::pow(color_linear.x, inverse) - 0.055f;
+          color_linear.y = 1.055f * std::pow(color_linear.y, inverse) - 0.055f;
+          color_linear.z = 1.055f * std::pow(color_linear.z, inverse) - 0.055f;
+          tonemapped_colors[j * width + i] = color_linear * 255.0f;
+        }
+      }
+    }
+    //
     cv::Mat image = cv::Mat(height, width, CV_32FC3);
 
     int idx = 0;
     for (int j = 0; j < height; j++) {
       for (int i = 0; i < width; i++) {
-        const Vector3 pixel = tonemapped_colors[j * width + i];
+        Vector3 pixel = tonemapped_colors[j * width + i];
+        if (true) {
+        }
         image.at<cv::Vec3f>(j, i)[0] = pixel.z;
         image.at<cv::Vec3f>(j, i)[1] = pixel.y;
         image.at<cv::Vec3f>(j, i)[2] = pixel.x;

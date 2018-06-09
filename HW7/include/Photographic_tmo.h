@@ -5,7 +5,7 @@
 class Photographic_tmo : public Tonemapping_operator {
  public:
   Photographic_tmo(float image_key = 0.18f, float saturation_percentage = 1.0f,
-                   float saturation = 1.0f, float gamma = 2.2f);
+                   float saturation = 1.0f);
   void apply_tmo(const std::vector<Vector3>& input,
                  std::vector<Vector3>& output) const override;
 

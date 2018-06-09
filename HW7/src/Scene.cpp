@@ -453,20 +453,14 @@ Scene::Scene(const std::string& file_name) {
       auto tonemap_child = child->FirstChildElement("TMO");
       if (std::string(tonemap_child->GetText()) ==
           std::string("Photographic")) {
-        float image_key, saturation_percentage, saturation, gamma;
+        float image_key, saturation_percentage, saturation;
         tonemap_child = child->FirstChildElement("TMOOptions");
         stream << tonemap_child->GetText() << std::endl;
         tonemap_child = child->FirstChildElement("Saturation");
         stream << tonemap_child->GetText() << std::endl;
-        tonemap_child = child->FirstChildElement("Gamma");
-        if (tonemap_child) {
-          stream << tonemap_child->GetText() << std::endl;
-        } else {
-          stream << "2.2" << std::endl;
-        }
-        stream >> image_key >> saturation_percentage >> saturation >> gamma;
-        tmo = new Photographic_tmo(image_key, saturation_percentage, saturation,
-                                   gamma);
+        stream >> image_key >> saturation_percentage >> saturation;
+        tmo =
+            new Photographic_tmo(image_key, saturation_percentage, saturation);
       }
     }
     if (tmo == nullptr) {
