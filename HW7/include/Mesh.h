@@ -19,7 +19,11 @@ class Mesh : public Shape {
   Transformation base_transform;
 
   bool intersect(const Ray& ray, Hit_data& hit_data) const override {
-    return bvh->intersect(ray, hit_data);
+    if (bvh->intersect(ray, hit_data)) {
+      hit_data.is_light_object = false;
+      return true;
+    }
+    return false;
   }
 
   int get_material_id() const override { return material_id; }
@@ -74,6 +78,7 @@ class Mesh_instance : public Shape {
         hit_data.normal = transformation_.get_normal_transformation_matrix()
                               .multiply(hit_data.normal, true)
                               .normalize();
+        hit_data.is_light_object = false;
         hit_data.shape = this;
         return true;
       }
@@ -97,6 +102,7 @@ class Mesh_instance : public Shape {
                               .multiply(hit_data.normal, true)
                               .normalize();
         hit_data.shape = this;
+        hit_data.is_light_object = false;
         return true;
       }
       return false;

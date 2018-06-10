@@ -4,6 +4,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include "Light_mesh.h"
 #include "Pixel.h"
 #include "tinyply.h"
 #include "tinyxml2.h"
@@ -122,6 +123,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
   Hit_data hit_data;
   hit_data.t = std::numeric_limits<float>::infinity();
   hit_data.shape = NULL;
+  hit_data.is_light_object = false;
   if (!bvh->intersect(ray, hit_data)) {
     // Check if it is primary ray or mirror ray
     if (ray.ray_type == r_primary) {
@@ -132,6 +134,9 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       }
     }
     return color;
+  }
+  if (hit_data.is_light_object) {
+    return hit_data.radiance * 255.0f;
   }
   const Shape* shape = hit_data.shape;
   const Vector3 intersection_point = ray.point_at(hit_data.t);
@@ -172,8 +177,9 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
       for (const Light* light : lights) {
         // Shadow check
         float light_distance;
-        const Vector3 light_direction_vec =
-            light->direction_and_distance(intersection_point, light_distance);
+        float probability;
+        const Vector3 light_direction_vec = light->direction_and_distance(
+            intersection_point, light_distance, probability);
         const Vector3 w_i = light_direction_vec.normalize();
         Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
                        r_shadow, ray.time);
@@ -187,7 +193,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         }
         //
         Vector3 incoming_radiance =
-            light->incoming_radiance(light_direction_vec);
+            light->incoming_radiance(light_direction_vec, probability);
         float cos_theta_i = std::max(0.0f, normal.dot(w_i));
         if (brdf) {
           color += incoming_radiance * cos_theta_i *
@@ -1036,6 +1042,52 @@ Scene::Scene(const std::string& file_name) {
   stream.clear();
   debug("MeshInstances are parsed");
 
+  // Get LightMeshes
+  // No ply support for light mesh yet
+  element = root->FirstChildElement("Objects");
+  element = element->FirstChildElement("LightMesh");
+  while (element) {
+    Vector3 radiance;
+    int material_id;
+    auto child = element->FirstChildElement("Material");
+    stream << child->GetText() << std::endl;
+    stream >> material_id;
+    material_id--;
+    child = element->FirstChildElement("Radiance");
+    stream << child->GetText() << std::endl;
+    stream >> radiance.x >> radiance.y >> radiance.z;
+    std::vector<Shape*> triangles;
+    child = element->FirstChildElement("Faces");
+    int vertex_offset = child->IntAttribute("vertexOffset", 0);
+    stream << child->GetText() << std::endl;
+    int v0_id, v1_id, v2_id;
+    while (!(stream >> v0_id).eof()) {
+      stream >> v1_id >> v2_id;
+      v0_id--;
+      v1_id--;
+      v2_id--;
+      Mesh_triangle* triangle =
+          new Mesh_triangle(this, v0_id, v1_id, v2_id, vertex_offset, 0,
+                            material_id, -1, Triangle_shading_mode::tsm_flat);
+      float area = triangle->get_surface_area();
+      const Vector3& surface_normal = triangle->normal;
+      vertex_data[triangle->index_0 + triangle->offset].add_vertex_normal(
+          surface_normal, area);
+      vertex_data[triangle->index_1 + triangle->offset].add_vertex_normal(
+          surface_normal, area);
+      vertex_data[triangle->index_2 + triangle->offset].add_vertex_normal(
+          surface_normal, area);
+      triangles.push_back(triangle);
+    }
+    Light_mesh* light_mesh =
+        new Light_mesh(this, material_id, triangles, radiance);
+    lights.push_back(light_mesh);
+    objects.push_back(light_mesh);
+    element = element->NextSiblingElement("LightMesh");
+  }
+  stream.clear();
+  debug("LightMeshes are parsed");
+
   // Get Triangles
   element = root->FirstChildElement("Objects");
   element = element->FirstChildElement("Triangle");
@@ -1475,7 +1527,7 @@ void Scene::parse_ply_tinyply(std::string filename,
   }
 }
 Scene::~Scene() {
-  delete bvh;
+  /*delete bvh;
   if (background_texture) {
     delete background_texture;
   }
@@ -1490,5 +1542,5 @@ Scene::~Scene() {
   size = brdfs.size();
   for (size_t i = 0; i < size; i++) {
     delete brdfs[i];
-  }
+  }*/
 }

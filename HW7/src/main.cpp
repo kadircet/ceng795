@@ -71,8 +71,6 @@ int main(int argc, char* argv[]) {
     for (int j = 0; j < height; j++) {
       for (int i = 0; i < width; i++) {
         Vector3 pixel = tonemapped_colors[j * width + i];
-        if (true) {
-        }
         image.at<cv::Vec3f>(j, i)[0] = pixel.z;
         image.at<cv::Vec3f>(j, i)[1] = pixel.y;
         image.at<cv::Vec3f>(j, i)[2] = pixel.x;

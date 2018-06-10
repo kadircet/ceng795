@@ -37,6 +37,7 @@ bool BVH::intersect(const Ray& ray, Hit_data& hit_data) const {
   Hit_data left_hit_data;
   left_hit_data.t = std::numeric_limits<float>::infinity();
   left_hit_data.shape = NULL;
+  left_hit_data.is_light_object = false;
   if (left->intersect(ray, left_hit_data) && left_hit_data.t > 0.0f &&
       left_hit_data.t < hit_data.t) {
     hit_data = left_hit_data;
@@ -45,6 +46,7 @@ bool BVH::intersect(const Ray& ray, Hit_data& hit_data) const {
   Hit_data right_hit_data;
   right_hit_data.t = std::numeric_limits<float>::infinity();
   right_hit_data.shape = NULL;
+  right_hit_data.is_light_object = false;
   if (right->intersect(ray, right_hit_data) && right_hit_data.t > 0.0f &&
       right_hit_data.t < hit_data.t) {
     intersect = true;

@@ -96,8 +96,9 @@ bool Sphere::intersect(const Ray& ray, Hit_data& hit_data) const {
   hit_data.v = v;
   hit_data.perlin_value = perlin_value;
   hit_data.normal = normal_transformation.multiply(normal, true).normalize();
-  ;
+
   hit_data.shape = this;
+  hit_data.is_light_object = false;
   return true;
 }
 

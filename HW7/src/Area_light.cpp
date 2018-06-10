@@ -12,7 +12,8 @@ Area_light::Area_light(const Vector3& position, const Vector3& intensity,
 }
 
 Vector3 Area_light::direction_and_distance(const Vector3& from_point,
-                                           float& distance) const {
+                                           float& distance,
+                                           float& probability) const {
   thread_local static std::random_device rd;
   thread_local static std::mt19937 generator(rd());
   std::uniform_real_distribution<float> area_light_distribution(0.0f, 1.0f);
@@ -25,8 +26,8 @@ Vector3 Area_light::direction_and_distance(const Vector3& from_point,
   return direction;
 }
 
-Vector3 Area_light::incoming_radiance(
-    const Vector3& from_point_to_light) const {
+Vector3 Area_light::incoming_radiance(const Vector3& from_point_to_light,
+                                      float probability) const {
   Vector3 reverse_w_i = -(from_point_to_light.normalize());
   float x = from_point_to_light.x;
   float y = from_point_to_light.y;

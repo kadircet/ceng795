@@ -15,7 +15,7 @@ void Photographic_tmo::apply_tmo(const std::vector<Vector3>& input,
   const float epsilon = 0.001;
   for (size_t i = 0; i < size; i++) {
     const Vector3& color = input[i];
-    float lum = (0.21f * color.x + 0.72f * color.y + 0.07f * color.z);
+    float lum = (0.21f * color.x + 0.72f * color.y + 0.07f * color.z) / 255.0f;
     luminances.push_back(lum);
     log_average_luminance += std::log(lum + epsilon);
   }

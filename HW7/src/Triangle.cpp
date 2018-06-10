@@ -85,6 +85,7 @@ bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
       hit_data.t = t;
       hit_data.shape = this;
       hit_data.normal = this->normal;
+      hit_data.is_light_object = false;
       return true;
     }
     return false;
@@ -115,6 +116,7 @@ bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
       // TODO: Check if it is precomputable?
       hit_data.normal =
           normal_transformation.multiply(this->normal, true).normalize();
+      hit_data.is_light_object = false;
       return true;
     }
     // TODO ADD Texture support for primitive triangles
