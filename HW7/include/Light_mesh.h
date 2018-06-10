@@ -1,7 +1,7 @@
 #pragma once
 #ifndef LIGHT_MESH_H_
 #define LIGHT_MESH_H_
-#include <map>
+#include <vector>
 #include "Light.h"
 #include "Mesh.h"
 #include "Mesh_triangle.h"
@@ -14,6 +14,7 @@ class Light_mesh : public Light, public Mesh {
              const Vector3& radiance)
       : scene_(scene),
         radiance_(radiance),
+        triangles_(triangles),
         Mesh(material_id, -1, triangles, Translation(0.0f, 0.0f, 0.0f), 0.0f) {
     total_area_ = 0.0f;
     std::vector<float> pdf;
@@ -26,7 +27,7 @@ class Light_mesh : public Light, public Mesh {
     float current_cumulative_area = 0.0f;
     for (int i = 0; i < triangles.size(); i++) {
       current_cumulative_area += pdf[i];
-      triangles_[current_cumulative_area / total_area_] = triangles[i];
+      cdf_.push_back(current_cumulative_area / total_area_);
     }
   }
   bool intersect(const Ray& ray, Hit_data& hit_data) const override {
@@ -46,7 +47,9 @@ class Light_mesh : public Light, public Mesh {
 
  private:
   Vector3 radiance_;
-  std::map<float, Shape*> triangles_;
+  // std::map<float, Shape*> triangles_;
+  std::vector<Shape*> triangles_;
+  std::vector<float> cdf_;
   float total_area_;
   Scene* scene_;
 };

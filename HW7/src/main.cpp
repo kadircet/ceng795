@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
 
     // sRGB correction
     // no parsing yet :P
-    if (true) {
+    if (false) {
       constexpr float inverse = 1.0f / 2.4f;
       for (int j = 0; j < height; j++) {
         for (int i = 0; i < width; i++) {
