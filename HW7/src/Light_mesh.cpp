@@ -39,7 +39,7 @@ Vector3 Light_mesh::direction_and_distance(const Vector3& from_point,
   const Vector3 direction = p - from_point;
   distance = direction.length();
   float cos_theta_i =
-      std::max(0.001f, direction.normalize().dot(triangle->normal));
+      std::max(0.001f, -direction.normalize().dot(triangle->normal));
   probability = distance * distance / (total_area_ * cos_theta_i);
   // std::cout << cos_theta_i << p << probability << std::endl;
   return direction;
