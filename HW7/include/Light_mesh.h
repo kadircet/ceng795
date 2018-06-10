@@ -10,8 +10,8 @@
 #include "Vector3.h"
 class Light_mesh : public Light, public Mesh {
  public:
-  Light_mesh(Scene* scene, int material_id, std::vector<Shape*>& triangles,
-             const Vector3& radiance)
+  Light_mesh(const Scene* scene, int material_id,
+             std::vector<Shape*>& triangles, const Vector3& radiance)
       : scene_(scene),
         radiance_(radiance),
         triangles_(triangles),
@@ -51,6 +51,6 @@ class Light_mesh : public Light, public Mesh {
   std::vector<Shape*> triangles_;
   std::vector<float> cdf_;
   float total_area_;
-  Scene* scene_;
+  const Scene* scene_;
 };
 #endif

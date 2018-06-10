@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include "Light_mesh.h"
+#include "Light_sphere.h"
 #include "Pixel.h"
 #include "tinyply.h"
 #include "tinyxml2.h"
@@ -1147,6 +1148,74 @@ Scene::Scene(const std::string& file_name) {
   }
   stream.clear();
   debug("Triangles are parsed");
+
+  // Get LightSpheres
+  element = root->FirstChildElement("Objects");
+  element = element->FirstChildElement("LightSphere");
+  while (element) {
+    int material_id;
+    auto child = element->FirstChildElement("Material");
+    stream << child->GetText() << std::endl;
+    stream >> material_id;
+    material_id--;
+
+    child = element->FirstChildElement("Center");
+    stream << child->GetText() << std::endl;
+    int center;
+    stream >> center;
+    const Vector3& center_of_sphere =
+        vertex_data[center - 1].get_vertex_position();
+
+    float radius;
+    child = element->FirstChildElement("Radius");
+    stream << child->GetText() << std::endl;
+    stream >> radius;
+    Matrix4x4 arbitrary_transformation(true);
+    child = element->FirstChildElement("Transformations");
+    if (child) {
+      char type;
+      int index;
+      stream.clear();
+      stream << child->GetText() << std::endl;
+      while (!(stream >> type).eof()) {
+        stream >> index;
+        index--;
+        switch (type) {
+          case 's':
+            arbitrary_transformation =
+                scaling_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+          case 't':
+            arbitrary_transformation =
+                translation_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+          case 'r':
+            arbitrary_transformation =
+                rotation_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+        }
+      }
+      stream.clear();
+    }
+    stream.clear();
+
+    Vector3 radiance;
+    child = element->FirstChildElement("Radiance");
+    stream << child->GetText() << std::endl;
+    stream >> radiance.x >> radiance.y >> radiance.z;
+
+    Light_sphere* light_sphere = new Light_sphere(
+        this, center_of_sphere, radius, material_id,
+        Arbitrary_transformation(arbitrary_transformation), radiance);
+    objects.push_back(light_sphere);
+    lights.push_back(light_sphere);
+    element = element->NextSiblingElement("LightSphere");
+  }
+  stream.clear();
+  debug("LightSpheres are parsed");
 
   // Get Spheres
   element = root->FirstChildElement("Objects");
