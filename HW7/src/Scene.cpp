@@ -136,7 +136,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     return color;
   }
   if (hit_data.is_light_object) {
-    return hit_data.radiance * 255.0f;
+    return hit_data.radiance;
   }
   const Shape* shape = hit_data.shape;
   const Vector3 intersection_point = ray.point_at(hit_data.t);
