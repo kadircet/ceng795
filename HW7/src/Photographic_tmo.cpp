@@ -33,12 +33,9 @@ void Photographic_tmo::apply_tmo(const std::vector<Vector3>& input,
         (luminances[i] + 1);
     const Vector3& color = input[i];
     float lum_i = (0.21f * color.x + 0.72f * color.y + 0.07f * color.z);
-    float r_f = std::pow((color.x / lum_i), saturation_) * luminances[i];
-    float g_f = std::pow((color.y / lum_i), saturation_) * luminances[i];
-    float b_f = std::pow((color.z / lum_i), saturation_) * luminances[i];
-    float r_d = std::min(1.0f, std::max(0.0f, r_f)) * 255.0f;
-    float g_d = std::min(1.0f, std::max(0.0f, g_f)) * 255.0f;
-    float b_d = std::min(1.0f, std::max(0.0f, b_f)) * 255.0f;
-    output.push_back(Vector3(r_d, g_d, b_d));
+    float r = std::pow((color.x / lum_i), saturation_) * luminances[i];
+    float g = std::pow((color.y / lum_i), saturation_) * luminances[i];
+    float b = std::pow((color.z / lum_i), saturation_) * luminances[i];
+    output.push_back(Vector3(r, g, b));
   }
 }

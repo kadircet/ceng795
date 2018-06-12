@@ -12,7 +12,7 @@ class Pixel {
   float weight;
   void add_color(const Vector3& color, float weight) {
     std::lock_guard<std::mutex> lock(mutex_);
-    this->color += (color * 255.0f * weight);
+    this->color += (color * weight);
     this->weight += weight;
   }
   Vector3 get_color() {
@@ -21,7 +21,7 @@ class Pixel {
     if (weight == 0) {
       return Vector3(0.0f);
     } else {
-      return color / weight / 255.0f;
+      return color / weight;
     }
   }
 

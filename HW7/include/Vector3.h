@@ -1,6 +1,7 @@
 #pragma once
 #ifndef VECTOR3_H_
 #define VECTOR3_H_
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #ifndef M_PI
@@ -118,4 +119,9 @@ inline Vector3 operator+(float a, const Vector3& b) { return b + a; }
 inline Vector3 operator-(float a, const Vector3& b) { return Vector3(a) - b; }
 inline Vector3 operator*(float a, const Vector3& b) { return b * a; }
 inline Vector3 operator/(float a, const Vector3& b) { return Vector3(a) / b; }
+
+// TODO: generate a utility header
+inline float clamp(float x, float upper, float lower) {
+  return std::min(upper, std::max(x, lower));
+}
 #endif

@@ -470,9 +470,6 @@ Scene::Scene(const std::string& file_name) {
             new Photographic_tmo(image_key, saturation_percentage, saturation);
       }
     }
-    if (tmo == nullptr) {
-      tmo = new Null_tmo();
-    }
     cameras.push_back(std::move(
         Camera(up, gaze, position, number_of_samples, image_name, near_l,
                near_r, near_b, near_t, near_distance, image_width, image_height,
