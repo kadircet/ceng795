@@ -1,8 +1,8 @@
 #include "Sphere.h"
+#include <algorithm>
 #include "Ray.h"
 #include "Scene.h"
 #include "Texture.h"
-
 Sphere::Sphere(const Scene* scene, const Vector3& center, float radius,
                int material_id, int texture_id,
                const Transformation& transformation, const Vector3& velocity)
@@ -104,7 +104,8 @@ bool Sphere::intersect(const Ray& ray, Hit_data& hit_data) const {
 
 void Sphere::get_uv(const Vector3& local_coordinates, float& u,
                     float& v) const {
-  float theta = acos(local_coordinates.y / radius);
+  float theta =
+      std::acos(std::max(-1.0f, std::min(1.0f, local_coordinates.y / radius)));
   float phi = atan2(local_coordinates.z, local_coordinates.x);
   u = (M_PI - phi) / (2 * M_PI);
   v = theta / M_PI;

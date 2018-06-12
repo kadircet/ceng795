@@ -17,9 +17,10 @@ class Sphere : public Shape {
   int texture_id;
   Vector3 velocity;
 
-  Sphere(const Scene* scene, const Vector3& center, float radius, int material_id, int texture_id,
-         const Transformation& transformation, const Vector3& velocity);
-  
+  Sphere(const Scene* scene, const Vector3& center, float radius,
+         int material_id, int texture_id, const Transformation& transformation,
+         const Vector3& velocity);
+
   int get_material_id() const override { return material_id; }
   int get_texture_id() const override { return texture_id; }
   const Bounding_box& get_bounding_box() const override {
@@ -34,11 +35,13 @@ class Sphere : public Shape {
               << " material: " << material_id << std::endl;
   }
 
- private:
+ protected:
   Transformation transformation_;
+  const Scene* scene_;
+
+ private:
   bool is_identity_;
   Bounding_box bounding_box_;
-  const Scene* scene_;
   void get_uv(const Vector3& local_coordinates, float& u, float& v) const;
 };
 #endif
