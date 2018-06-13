@@ -24,11 +24,11 @@ Vector3 Light_mesh::direction_and_distance(const Vector3& from_point,
   }
 
   const Vertex& vertex_0 =
-      scene_->get_vertex_at(triangle->index_0 + triangle->offset);
+      scene_->get_vertex_at(triangle->vertex_index_0 + triangle->vertex_offset);
   const Vertex& vertex_1 =
-      scene_->get_vertex_at(triangle->index_1 + triangle->offset);
+      scene_->get_vertex_at(triangle->vertex_index_1 + triangle->vertex_offset);
   const Vertex& vertex_2 =
-      scene_->get_vertex_at(triangle->index_2 + triangle->offset);
+      scene_->get_vertex_at(triangle->vertex_index_2 + triangle->vertex_offset);
   const Vector3& p_0 = vertex_0.get_vertex_position();
   const Vector3& p_1 = vertex_1.get_vertex_position();
   const Vector3& p_2 = vertex_2.get_vertex_position();

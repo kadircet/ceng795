@@ -63,6 +63,6 @@ class Scene {
   void parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertices,
                          std::vector<Shape*>& mesh_triangles, int vertex_offset,
                          int texture_offset, int material_id, int texture_id,
-                         Triangle_shading_mode tsm) const;
+                         Triangle_shading_mode tsm);
 };
 #endif

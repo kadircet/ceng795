@@ -12,7 +12,7 @@ class Camera {
          int number_of_samples, const std::string& filename, float left,
          float right, float bottom, float top, float distance, int image_width,
          int image_height, float focus_distance, float aperture_size,
-         Tonemapping_operator* tmo)
+         Tonemapping_operator* tmo, bool left_handed)
       : e(position),
         number_of_samples_(number_of_samples),
         aperture_size_(aperture_size),
@@ -21,8 +21,14 @@ class Camera {
                      image_height),
         tmo_(tmo) {
     w = -(gaze.normalize());
-    u = up.normalize().cross(w).normalize();
-    v = w.cross(u).normalize();
+    if (left_handed) {
+      u = w.cross(up.normalize()).normalize();
+      v = u.cross(w).normalize();
+    } else {
+      u = up.normalize().cross(w).normalize();
+      v = w.cross(u).normalize();
+    }
+
     if (aperture_size_ != 0.0f) {
       float ratio = focus_distance / distance;
       image_plane_ =

@@ -11,16 +11,16 @@ enum Triangle_shading_mode { tsm_flat, tsm_smooth };
 
 class Mesh_triangle : public Shape {
  public:
-  int index_0, index_1, index_2;
-  int offset;
+  int vertex_index_0, vertex_index_1, vertex_index_2;
+  int vertex_offset;
   int texture_offset;
   Vector3 normal;
   int material_id;
   int texture_id;
   Triangle_shading_mode triangle_shading_mode;
-  Mesh_triangle(const Scene* scene, int index_0, int index_1, int index_2,
-                int offset, int texture_offset, int material_id, int texture_id,
-                Triangle_shading_mode tsm);
+  Mesh_triangle(const Scene* scene, int vertex_index_0, int vertex_index_1,
+                int vertex_index_2, int vertex_offset, int texture_offset,
+                int material_id, int texture_id, Triangle_shading_mode tsm);
   bool intersect(const Ray& ray, Hit_data& hit_data) const override;
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;
@@ -31,9 +31,9 @@ class Mesh_triangle : public Shape {
     for (int index = 0; index < indentation; index++) {
       std::cout << "\t";
     }
-    std::cout << "Mesh_triangle(" << index_0 << "," << index_1 << "," << index_2
-              << "), material: " << material_id << "normal: " << normal
-              << std::endl;
+    std::cout << "Mesh_triangle(" << vertex_index_0 << "," << vertex_index_1
+              << "," << vertex_index_2 << "), material: " << material_id
+              << "normal: " << normal << std::endl;
   }
   float get_surface_area() const;
 

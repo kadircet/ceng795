@@ -7,7 +7,7 @@
 #include "lodepng.h"
 #include "timeutil.h"
 #include "tinyexr.h"
-#define THREAD_MULTIPLIER 1
+#define THREAD_MULTIPLIER 0
 void write_png(const std::vector<Vector3>& pixel_colors,
                const std::string& file_name, int width, int height);
 void write_exr(const std::vector<Vector3>& hdr_image,

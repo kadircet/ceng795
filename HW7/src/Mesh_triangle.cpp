@@ -2,25 +2,26 @@
 #include <algorithm>
 #include "Hit_data.h"
 #include "Scene.h"
-Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1,
-                             int index_2, int offset, int texture_offset,
+Mesh_triangle::Mesh_triangle(const Scene* scene, int vertex_index_0,
+                             int vertex_index_1, int vertex_index_2,
+                             int vertex_offset, int texture_offset,
                              int material_id, int texture_id,
                              Triangle_shading_mode tsm)
-    : index_0(index_0),
-      index_1(index_1),
-      index_2(index_2),
-      offset(offset),
+    : vertex_index_0(vertex_index_0),
+      vertex_index_1(vertex_index_1),
+      vertex_index_2(vertex_index_2),
+      vertex_offset(vertex_offset),
       texture_offset(texture_offset),
       material_id(material_id),
       texture_id(texture_id),
       triangle_shading_mode(tsm),
       scene_(scene) {
-  const Vector3& v_0 =
-      scene_->get_vertex_at(index_0 + offset).get_vertex_position();
-  const Vector3& v_1 =
-      scene_->get_vertex_at(index_1 + offset).get_vertex_position();
-  const Vector3& v_2 =
-      scene_->get_vertex_at(index_2 + offset).get_vertex_position();
+  const Vector3& v_0 = scene_->get_vertex_at(vertex_index_0 + vertex_offset)
+                           .get_vertex_position();
+  const Vector3& v_1 = scene_->get_vertex_at(vertex_index_1 + vertex_offset)
+                           .get_vertex_position();
+  const Vector3& v_2 = scene_->get_vertex_at(vertex_index_2 + vertex_offset)
+                           .get_vertex_position();
   normal = (v_1 - v_0).cross(v_2 - v_0).normalize();
   Vector3 min_c = v_0;
   Vector3 max_c = v_0;
@@ -44,18 +45,21 @@ Mesh_triangle::Mesh_triangle(const Scene* scene, int index_0, int index_1,
 }
 
 float Mesh_triangle::get_surface_area() const {
-  const Vector3& v_0 =
-      scene_->get_vertex_at(index_0 + offset).get_vertex_position();
-  const Vector3& v_1 =
-      scene_->get_vertex_at(index_1 + offset).get_vertex_position();
-  const Vector3& v_2 =
-      scene_->get_vertex_at(index_2 + offset).get_vertex_position();
+  const Vector3& v_0 = scene_->get_vertex_at(vertex_index_0 + vertex_offset)
+                           .get_vertex_position();
+  const Vector3& v_1 = scene_->get_vertex_at(vertex_index_1 + vertex_offset)
+                           .get_vertex_position();
+  const Vector3& v_2 = scene_->get_vertex_at(vertex_index_2 + vertex_offset)
+                           .get_vertex_position();
   return (v_1 - v_0).cross(v_2 - v_0).length() / 2;
 }
 bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
-  const Vertex& vertex_0 = scene_->get_vertex_at(index_0 + offset);
-  const Vertex& vertex_1 = scene_->get_vertex_at(index_1 + offset);
-  const Vertex& vertex_2 = scene_->get_vertex_at(index_2 + offset);
+  const Vertex& vertex_0 =
+      scene_->get_vertex_at(vertex_index_0 + vertex_offset);
+  const Vertex& vertex_1 =
+      scene_->get_vertex_at(vertex_index_1 + vertex_offset);
+  const Vertex& vertex_2 =
+      scene_->get_vertex_at(vertex_index_2 + vertex_offset);
   const Vector3& p_0 = vertex_0.get_vertex_position();
   const Vector3& p_1 = vertex_1.get_vertex_position();
   const Vector3& p_2 = vertex_2.get_vertex_position();
@@ -105,9 +109,12 @@ bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
           normal = texture.bump_normal(normal, local_intersection_point);
         }
       } else {
-        Vector3 uva = scene_->texture_coord_data[index_0 + texture_offset];
-        Vector3 uvb = scene_->texture_coord_data[index_1 + texture_offset];
-        Vector3 uvc = scene_->texture_coord_data[index_2 + texture_offset];
+        Vector3 uva =
+            scene_->texture_coord_data[vertex_index_0 + texture_offset];
+        Vector3 uvb =
+            scene_->texture_coord_data[vertex_index_1 + texture_offset];
+        Vector3 uvc =
+            scene_->texture_coord_data[vertex_index_2 + texture_offset];
         u = uva.x + beta * (uvb.x - uva.x) + gamma * (uvc.x - uva.x);
         v = uva.y + beta * (uvb.y - uva.y) + gamma * (uvc.y - uva.y);
         if (texture.is_bump()) {

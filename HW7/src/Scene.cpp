@@ -386,6 +386,7 @@ Scene::Scene(const std::string& file_name) {
     int image_width, image_height;
     int number_of_samples;
     std::string image_name;
+    bool left_handed = false;
 
     auto child = element->FirstChildElement("Position");
     stream << child->GetText() << std::endl;
@@ -430,6 +431,9 @@ Scene::Scene(const std::string& file_name) {
     const char* camera_type = element->Attribute("type");
     if (camera_type && std::string(camera_type) == std::string("simple")) {
       child = element->FirstChildElement("Gaze");
+      if (!child) {
+        child = element->FirstChildElement("GazePoint");
+      }
       stream << child->GetText() << std::endl;
       child = element->FirstChildElement("FovY");
       stream << child->GetText() << std::endl;
@@ -448,6 +452,9 @@ Scene::Scene(const std::string& file_name) {
 
     } else {
       child = element->FirstChildElement("Gaze");
+      if (!child) {
+        child = element->FirstChildElement("GazePoint");
+      }
       stream << child->GetText() << std::endl;
       child = element->FirstChildElement("NearPlane");
       stream << child->GetText() << std::endl;
@@ -470,10 +477,14 @@ Scene::Scene(const std::string& file_name) {
             new Photographic_tmo(image_key, saturation_percentage, saturation);
       }
     }
+    const char* handedness = element->Attribute("handedness");
+    if (handedness && std::string(handedness) == std::string("left")) {
+      left_handed = true;
+    }
     cameras.push_back(std::move(
         Camera(up, gaze, position, number_of_samples, image_name, near_l,
                near_r, near_b, near_t, near_distance, image_width, image_height,
-               focus_distance, aperture_size, tmo)));
+               focus_distance, aperture_size, tmo, left_handed)));
     element = element->NextSiblingElement("Camera");
   }
   stream.clear();
@@ -937,12 +948,12 @@ Scene::Scene(const std::string& file_name) {
             material_id, texture_id, triangle_shading_mode);
         float area = triangle->get_surface_area();
         const Vector3& surface_normal = triangle->normal;
-        vertex_data[triangle->index_0 + triangle->offset].add_vertex_normal(
-            surface_normal, area);
-        vertex_data[triangle->index_1 + triangle->offset].add_vertex_normal(
-            surface_normal, area);
-        vertex_data[triangle->index_2 + triangle->offset].add_vertex_normal(
-            surface_normal, area);
+        vertex_data[triangle->vertex_index_0 + triangle->vertex_offset]
+            .add_vertex_normal(surface_normal, area);
+        vertex_data[triangle->vertex_index_1 + triangle->vertex_offset]
+            .add_vertex_normal(surface_normal, area);
+        vertex_data[triangle->vertex_index_2 + triangle->vertex_offset]
+            .add_vertex_normal(surface_normal, area);
         triangles.push_back(triangle);
       }
     }
@@ -1069,12 +1080,12 @@ Scene::Scene(const std::string& file_name) {
                             material_id, -1, Triangle_shading_mode::tsm_flat);
       float area = triangle->get_surface_area();
       const Vector3& surface_normal = triangle->normal;
-      vertex_data[triangle->index_0 + triangle->offset].add_vertex_normal(
-          surface_normal, area);
-      vertex_data[triangle->index_1 + triangle->offset].add_vertex_normal(
-          surface_normal, area);
-      vertex_data[triangle->index_2 + triangle->offset].add_vertex_normal(
-          surface_normal, area);
+      vertex_data[triangle->vertex_index_0 + triangle->vertex_offset]
+          .add_vertex_normal(surface_normal, area);
+      vertex_data[triangle->vertex_index_1 + triangle->vertex_offset]
+          .add_vertex_normal(surface_normal, area);
+      vertex_data[triangle->vertex_index_2 + triangle->vertex_offset]
+          .add_vertex_normal(surface_normal, area);
       triangles.push_back(triangle);
     }
     Light_mesh* light_mesh =
@@ -1354,7 +1365,7 @@ void Scene::parse_ply_tinyply(std::string filename,
                               std::vector<Shape*>& mesh_triangles,
                               int vertex_offset, int texture_offset,
                               int material_id, int texture_id,
-                              Triangle_shading_mode tsm) const {
+                              Triangle_shading_mode tsm) {
   try {
     // Read the file and create a std::istringstream suitable
     // for the lib -- tinyply does not perform any file i/o.
@@ -1366,17 +1377,24 @@ void Scene::parse_ply_tinyply(std::string filename,
     tinyply::PlyFile file;
     file.parse_header(ss);
     std::shared_ptr<tinyply::PlyData> ply_vertices, ply_vertice_normals,
-        ply_face_normals, ply_faces;
+        ply_face_normals, ply_faces, ply_vertex_uvs;
     try {
       ply_vertices =
           file.request_properties_from_element("vertex", {"x", "y", "z"});
     } catch (const std::exception& e) {
       std::cerr << "tinyply exception: " << e.what() << std::endl;
     }
-    // vertice normals
+    // vertex normals
     try {
       ply_vertice_normals =
           file.request_properties_from_element("vertex", {"nx", "ny", "nz"});
+    } catch (const std::exception& e) {
+      std::cerr << "tinyply exception: " << e.what() << std::endl;
+    }
+    // vertex uvs
+    try {
+      ply_vertex_uvs =
+          file.request_properties_from_element("vertex", {"u", "v"});
     } catch (const std::exception& e) {
       std::cerr << "tinyply exception: " << e.what() << std::endl;
     }
@@ -1429,6 +1447,7 @@ void Scene::parse_ply_tinyply(std::string filename,
     } else {
       throw std::runtime_error(filename + "contains no vertices");
     }
+
     // process vertice normals
     bool has_vertice_normals = false;
     if (ply_vertice_normals) {
@@ -1442,7 +1461,8 @@ void Scene::parse_ply_tinyply(std::string filename,
         for (; index < c; index++) {
           Vector3 normal(verts[3 * index], verts[3 * index + 1],
                          verts[3 * index + 2]);
-          vertices[index + vertex_offset].add_vertex_normal(normal, 1.0f);
+          vertices[index + vertex_offset].add_vertex_normal(normal.normalize(),
+                                                            1.0f);
           vertices[index + vertex_offset].finalize_normal();
         }
         has_vertice_normals = true;
@@ -1463,6 +1483,23 @@ void Scene::parse_ply_tinyply(std::string filename,
         throw std::runtime_error("Unknown normal type");
       }
     }
+    // process vertex uvs
+    if (ply_vertex_uvs) {
+      const size_t numUVsBytes = ply_vertex_uvs->buffer.size_bytes();
+      if (ply_vertice_normals->t == tinyply::Type::FLOAT32) {
+        texture_offset = texture_coord_data.size();
+        std::vector<float> uvs(ply_vertex_uvs->count * 2);
+        std::memcpy(uvs.data(), ply_vertex_uvs->buffer.get(), numUVsBytes);
+        size_t index = 0, c = ply_vertex_uvs->count;
+        for (; index < c; index++) {
+          Vector3 uv(uvs[2 * index], uvs[2 * index + 1], 0.0f);
+          texture_coord_data.push_back(uv);
+        }
+      } else {
+        throw std::runtime_error("Unknown uv type");
+      }
+    }
+
     // process face normals
     bool has_face_normals = false;
     if (ply_face_normals) {
@@ -1512,8 +1549,8 @@ void Scene::parse_ply_tinyply(std::string filename,
         if (is_triangle) {
           for (; index < c; index++) {
             int index_0 = verts[index * 3];
-            int index_1 = verts[index * 3];
-            int index_2 = verts[index * 3];
+            int index_1 = verts[index * 3 + 1];
+            int index_2 = verts[index * 3 + 2];
             mesh_triangles.push_back(new Mesh_triangle(
                 this, index_0, index_1, index_2, vertex_offset, texture_offset,
                 material_id, texture_id, tsm));
