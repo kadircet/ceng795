@@ -19,6 +19,7 @@
 #include "Point_light.h"
 #include "Shape.h"
 #include "Sphere.h"
+#include "Spherical_directional_light.h"
 #include "Spot_light.h"
 #include "Texture.h"
 #include "Torrance_sparrow_BRDF.h"
@@ -47,6 +48,7 @@ class Scene {
   std::vector<Vector3> texture_coord_data;
   std::vector<Texture> textures;
   std::vector<BRDF*> brdfs;
+  Spherical_directional_light* spherical_directional_light;
   inline const Vertex& get_vertex_at(int index) const {
     return vertex_data[index];
   }

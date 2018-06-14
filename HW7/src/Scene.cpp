@@ -130,6 +130,9 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
     if (ray.ray_type == r_primary) {
       if (background_texture) {
         return background_texture->get_color_at(ray.bg_u, ray.bg_v);
+
+      } else if (spherical_directional_light) {
+        return spherical_directional_light->incoming_radiance(ray.d, 1.0f);
       } else {
         return background_color;
       }
@@ -180,7 +183,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
         float light_distance;
         float probability;
         const Vector3 light_direction_vec = light->direction_and_distance(
-            intersection_point, light_distance, probability);
+            intersection_point, normal, light_distance, probability);
         const Vector3 w_i = light_direction_vec.normalize();
         Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
                        r_shadow, ray.time);
@@ -309,6 +312,7 @@ Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
 
 Scene::Scene(const std::string& file_name) {
   const float degrees_to_radians = M_PI / 180.0f;
+  spherical_directional_light = nullptr;
   tinyxml2::XMLDocument file;
   std::stringstream stream;
 
@@ -681,7 +685,7 @@ Scene::Scene(const std::string& file_name) {
       lights.push_back(new Spot_light(position, intensity, direction,
                                       coverage_angle_in_radians,
                                       falloff_angle_in_radians));
-      element = element->FirstChildElement("SpotLight");
+      element = element->NextSiblingElement("SpotLight");
     }
     stream.clear();
   }
@@ -700,10 +704,22 @@ Scene::Scene(const std::string& file_name) {
       stream >> direction.x >> direction.y >> direction.z;
       stream >> radiance.x >> radiance.y >> radiance.z;
       lights.push_back(new Directional_light(direction, radiance));
-      element = element->FirstChildElement("DirectionalLight");
+      element = element->NextSiblingElement("DirectionalLight");
     }
     stream.clear();
   }
+  element = root->FirstChildElement("Lights");
+  element = element->FirstChildElement("SphericalDirectionalLight");
+  if (element) {
+    std::string envmap_name;
+    float coverage_angle_in_radians, falloff_angle_in_radians;
+    auto child = element->FirstChildElement("EnvMapName");
+    envmap_name = child->GetText();
+    spherical_directional_light = new Spherical_directional_light(envmap_name);
+    lights.push_back(spherical_directional_light);
+  }
+  stream.clear();
+
   debug("Lights are parsed");
   // Lights End
 

@@ -4,7 +4,7 @@
 class Light {
  public:
   virtual Vector3 direction_and_distance(const Vector3& from_point,
-                                         float& distance,
+                                         const Vector3& normal, float& distance,
                                          float& probability) const = 0;
 
   // Incoming radiance to the point from the light

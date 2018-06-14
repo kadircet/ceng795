@@ -1,11 +1,14 @@
 #pragma once
-#ifndef AREA_LIGHT_H
-#define AREA_LIGHT_LIGHT_H
+#ifndef SPHERICAL_DIRECTIONAL_LIGHT_H_
+#define SPHERICAL_DIRECTIONAL_LIGHT_H_
+#include <string>
+#include <vector>
 #include "Light.h"
-class Area_light : public Light {
+#include "Vector3.h"
+
+class Spherical_directional_light : public Light {
  public:
-  Area_light(const Vector3& position, const Vector3& intensity,
-             const Vector3& edge_vector_1, const Vector3& edge_vector_2);
+  Spherical_directional_light(const std::string& envmap_name);
   Vector3 direction_and_distance(const Vector3& from_point,
                                  const Vector3& normal, float& distance,
                                  float& probability) const override;
@@ -13,10 +16,9 @@ class Area_light : public Light {
                             float probability) const override;
 
  private:
-  Vector3 position_;
-  Vector3 intensity_;
-  Vector3 edge_vector_1_;
-  Vector3 edge_vector_2_;
-  Vector3 normal_;
+  // only exr for now
+  float* env_map_;
+  int width_;
+  int height_;
 };
 #endif

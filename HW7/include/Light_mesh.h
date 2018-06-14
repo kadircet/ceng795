@@ -38,7 +38,8 @@ class Light_mesh : public Light, public Mesh {
     }
     return false;
   }
-  Vector3 direction_and_distance(const Vector3& from_point, float& distance,
+  Vector3 direction_and_distance(const Vector3& from_point,
+                                 const Vector3& normal, float& distance,
                                  float& probability) const override;
 
   // Incoming radiance to the point from the light

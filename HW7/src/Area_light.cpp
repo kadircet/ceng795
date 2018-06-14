@@ -12,6 +12,7 @@ Area_light::Area_light(const Vector3& position, const Vector3& intensity,
 }
 
 Vector3 Area_light::direction_and_distance(const Vector3& from_point,
+                                           const Vector3& normal,
                                            float& distance,
                                            float& probability) const {
   thread_local static std::random_device rd;

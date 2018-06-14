@@ -1,6 +1,7 @@
 #include "Light_sphere.h"
 #include <random>
 Vector3 Light_sphere::direction_and_distance(const Vector3& from_point,
+                                             const Vector3& normal,
                                              float& distance,
                                              float& probability) const {
   thread_local static std::random_device rd;

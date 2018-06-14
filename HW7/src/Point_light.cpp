@@ -3,9 +3,10 @@
 Point_light::Point_light(const Vector3& position, const Vector3& intensity)
     : position_(position), intensity_(intensity) {}
 
-Vector3 Point_light::direction_and_distance(
-    const Vector3& from_point, float& distance,
-    float& probability) const {
+Vector3 Point_light::direction_and_distance(const Vector3& from_point,
+                                            const Vector3& normal,
+                                            float& distance,
+                                            float& probability) const {
   const Vector3 direction = position_ - from_point;
   distance = direction.length();
   return direction;

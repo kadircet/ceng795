@@ -11,9 +11,10 @@ Spot_light::Spot_light(const Vector3& position, const Vector3& intensity,
   cos_half_of_falloff_angle_ = std::cos(falloff_angle_in_radians / 2);
 }
 
-Vector3 Spot_light::direction_and_distance(
-    const Vector3& from_point, float& distance,
-    float& probability) const {
+Vector3 Spot_light::direction_and_distance(const Vector3& from_point,
+                                           const Vector3& normal,
+                                           float& distance,
+                                           float& probability) const {
   const Vector3 direction = position_ - from_point;
   distance = direction.length();
   return direction;
