@@ -1,7 +1,7 @@
 #ifndef BRDF_H_
 #define BRDF_H_
 #include "Vector3.h"
-struct Hit_data;
+class Hit_data;
 class BRDF {
  public:
   virtual Vector3 get_reflectance(const Hit_data& hit_data,

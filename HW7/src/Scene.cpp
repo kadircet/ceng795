@@ -28,8 +28,8 @@ void Scene::render_image(int camera_index, Pixel* result,
   if (number_of_samples == 1) {
     for (int j = starting_row; j < height; j += height_increase) {
       for (int i = 0; i < width; i++) {
-        Vector3 color = trace_ray(camera.calculate_ray_at(i + 0.5f, j + 0.5f),
-                                  max_recursion_depth);
+        Vector3 color =
+            send_ray(camera.calculate_ray_at(i + 0.5f, j + 0.5f), 0);
 #ifdef APPLY_FILTER_SINGLE_SAMPLE
         for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
           if (affected_j < 0 || affected_j >= height) {
@@ -67,18 +67,17 @@ void Scene::render_image(int camera_index, Pixel* result,
             float sample_x = (x + epsilon_x) / number_of_samples;
             float sample_y = (y + epsilon_y) / number_of_samples;
             if (aperture_size == 0.0f) {
-              color = trace_ray(
+              color = send_ray(
                   camera.calculate_ray_at(i + sample_x, j + sample_y,
                                           time_distribution(generator)),
-                  max_recursion_depth);
+                  0);
             } else {
               float dof_epsilon_x = dof_distribution(generator);
               float dof_epsilon_y = dof_distribution(generator);
-              color =
-                  trace_ray(camera.calculate_ray_at(
-                                i + sample_x, j + sample_y, dof_epsilon_x,
-                                dof_epsilon_y, time_distribution(generator)),
-                            max_recursion_depth);
+              color = send_ray(camera.calculate_ray_at(
+                                   i + sample_x, j + sample_y, dof_epsilon_x,
+                                   dof_epsilon_y, time_distribution(generator)),
+                               0);
             }
 
             for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
@@ -102,13 +101,16 @@ void Scene::render_image(int camera_index, Pixel* result,
   }
 }
 const Vector3 zero_vector(0.0f);
-bool Scene::refract_ray(const Vector3& direction_unit, const Vector3& normal,
-                        const float refraction_index,
-                        Vector3& transmitted_d) const {
+
+bool Scene::calculate_transmission(const Vector3& direction_unit,
+                                   const Vector3& normal,
+                                   const float refraction_index,
+                                   Vector3& transmitted_d) const {
   float n_ratio = 1 / refraction_index;
   float cos_theta = (-direction_unit).dot(normal);
   float delta = 1 - (n_ratio) * (n_ratio) * (1 - (cos_theta * cos_theta));
   if (delta < 0.0f) {
+    // Total internal reflection
     return false;
   }
   // TODO check if it is needed to be normalized.
@@ -118,196 +120,241 @@ bool Scene::refract_ray(const Vector3& direction_unit, const Vector3& normal,
   return true;
 }
 
-Vector3 Scene::trace_ray(const Ray& ray, int current_recursion_depth) const {
-  Vector3 color;
-  // Find intersection
+Vector3 Scene::refract_ray(const Ray& ray, const Hit_data& hit_data,
+                           int recursion_level) const {
+  const Material& material = materials[hit_data.shape->get_material_id()];
+  const Vector3& normal = hit_data.normal;
+  const Vector3 intersection_point = ray.point_at(hit_data.t);
+  const Vector3 w_o = (ray.o - intersection_point).normalize();
+  const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
+  Vector3 transmission_direction = zero_vector;
+  float cos_theta = 0.0f;
+  Vector3 k(0.0f);
+  Vector3 d_n = ray.d.normalize();
+  float n = material.refraction_index;
+  bool total_internal_reflection = false;
+  bool entering_ray;
+  if (d_n.dot(normal) < 0.0f) {
+    calculate_transmission(d_n, normal, n, transmission_direction);
+    cos_theta = (-d_n).dot(normal);
+    k = Vector3(1.0f);
+    entering_ray = true;
+  } else {
+    const Vector3& transparency = material.transparency;
+    const float hit_data_t = hit_data.t;
+    k.x = exp(log(transparency.x) * hit_data_t);
+    k.y = exp(log(transparency.y) * hit_data_t);
+    k.z = exp(log(transparency.z) * hit_data_t);
+    entering_ray = false;
+    if (calculate_transmission(d_n, -normal, 1.0f / n,
+                               transmission_direction)) {
+      cos_theta = transmission_direction.dot(normal);
+    } else {
+      total_internal_reflection = true;
+    }
+  }
+
+  if (total_internal_reflection) {
+    Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
+                       r_reflection, ray.time);
+    reflection_ray.in_medium = true;
+    return k * send_ray(reflection_ray, recursion_level + 1);
+  } else {
+    float r_0 = ((n - 1) * (n - 1)) / ((n + 1) * (n + 1));
+    float r = r_0 + (1 - r_0) * pow(1.0f - cos_theta, 5);
+    Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
+                       r_reflection, ray.time);
+    reflection_ray.in_medium = !entering_ray;
+    Ray transmission_ray(
+        intersection_point + (transmission_direction * shadow_ray_epsilon),
+        transmission_direction, r_refraction, ray.time);
+    transmission_ray.in_medium = entering_ray;
+    return k * (r * send_ray(reflection_ray, recursion_level + 1) +
+                (1 - r) * send_ray(transmission_ray, recursion_level + 1));
+  }
+}
+
+Vector3 Scene::send_ray(const Ray& ray, int recursion_level) const {
   Hit_data hit_data;
-  hit_data.t = std::numeric_limits<float>::infinity();
-  hit_data.shape = NULL;
-  hit_data.is_light_object = false;
   if (!bvh->intersect(ray, hit_data)) {
-    // Check if it is primary ray or mirror ray
     if (ray.ray_type == r_primary) {
       if (background_texture) {
         return background_texture->get_color_at(ray.bg_u, ray.bg_v);
-
       } else if (spherical_directional_light) {
         return spherical_directional_light->incoming_radiance(ray.d, 1.0f);
       } else {
         return background_color;
       }
     }
-    return color;
+    return 0.0f;
   }
-  if (hit_data.is_light_object) {
-    return hit_data.radiance;
-  }
-  const Shape* shape = hit_data.shape;
+  return trace_ray(ray, hit_data, recursion_level);
+}
+
+Vector3 Scene::reflect_ray(const Ray& ray, const Hit_data& hit_data,
+                           int recursion_level) const {
+  const Material& material = materials[hit_data.shape->get_material_id()];
+  const Vector3& normal = hit_data.normal;
   const Vector3 intersection_point = ray.point_at(hit_data.t);
+  const Vector3 w_o = (ray.o - intersection_point).normalize();
+  if (material.roughness == 0.0f) {
+    const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
+
+    Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
+                   r_reflection, ray.time);
+    return send_ray(mirror_ray, recursion_level + 1);
+  } else {
+    const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
+    Vector3 r_prime;
+    if (w_r.x < w_r.y && w_r.x < w_r.z) {
+      r_prime = Vector3(1.0f, w_r.y, w_r.z);
+    } else if (w_r.y < w_r.z && w_r.y < w_r.x) {
+      r_prime = Vector3(w_r.x, 1.0f, w_r.z);
+    } else {
+      r_prime = Vector3(w_r.x, w_r.y, 1.0f);
+    }
+    //(u,w_r,v) basis
+    Vector3 u = r_prime.cross(w_r).normalize();
+    Vector3 v = u.cross(w_r).normalize();
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> glossy_distribution(-0.5f, 0.5f);
+    float epsilon_u = glossy_distribution(generator);
+    float epsilon_v = glossy_distribution(generator);
+    const Vector3 w_r_prime =
+        (w_r + material.roughness * (u * epsilon_u + v * epsilon_v))
+            .normalize();
+    Ray mirror_ray(intersection_point + (w_r_prime * shadow_ray_epsilon),
+                   w_r_prime, r_reflection, ray.time);
+    return send_ray(mirror_ray, recursion_level + 1);
+  }
+}
+
+bool Scene::calculate_diffuse_constant(const Hit_data& hit_data,
+                                       Vector3& diffuse_constant_out) const {
+  const Shape* shape = hit_data.shape;
   const Material& material = materials[shape->get_material_id()];
   const int texture_id = shape->get_texture_id();
   const Texture* texture = (texture_id == -1) ? NULL : &(textures[texture_id]);
-  const Vector3 w_o = (ray.o - intersection_point).normalize();
-  const Vector3& normal = hit_data.normal;
-
-  Vector3 diffuse_color = material.diffuse;
+  diffuse_constant_out = material.diffuse;
   bool is_replace_all = false;
   if (texture) {
     is_replace_all = texture->get_decal_mode() == Texture::dm_replace_all;
     if (is_replace_all) {
-      color = texture->get_color_at(hit_data.u, hit_data.v);
+      diffuse_constant_out = texture->get_color_at(hit_data.u, hit_data.v);
     } else {
       if (texture->is_perlin_noise()) {
         float perlin_value = hit_data.perlin_value;
-        diffuse_color = texture->blend_color(
-            Vector3(perlin_value, perlin_value, perlin_value), diffuse_color);
+        diffuse_constant_out = texture->blend_color(
+            Vector3(perlin_value, perlin_value, perlin_value),
+            diffuse_constant_out);
       } else {
         Vector3 texture_color = texture->get_color_at(hit_data.u, hit_data.v) /
                                 texture->get_normalizer();
-        diffuse_color = texture->blend_color(texture_color, diffuse_color);
+        diffuse_constant_out =
+            texture->blend_color(texture_color, diffuse_constant_out);
       }
     }
   }
-  if (!is_replace_all) {
-    if (!ray.in_medium) {
-      // ambient light
-      // Should it be outside of if statement?
-      color += material.ambient * ambient_light;
-      BRDF* brdf = nullptr;
-      if (material.brdf_id != -1) {
-        brdf = brdfs[material.brdf_id];
-      }
-      // point lights
-      for (const Light* light : lights) {
-        // Shadow check
-        float light_distance;
-        float probability;
-        const Vector3 light_direction_vec = light->direction_and_distance(
-            intersection_point, normal, light_distance, probability);
-        const Vector3 w_i = light_direction_vec.normalize();
-        Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
-                       r_shadow, ray.time);
-        Hit_data shadow_hit_data;
-        shadow_hit_data.t = std::numeric_limits<float>::infinity();
-        shadow_hit_data.shape = NULL;
-        bvh->intersect(shadow_ray, shadow_hit_data);
-        if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
-            shadow_hit_data.t > 0.0f) {
-          continue;
-        }
-        //
-        Vector3 incoming_radiance =
-            light->incoming_radiance(light_direction_vec, probability);
-        float cos_theta_i = std::max(0.0f, normal.dot(w_i));
-        if (brdf) {
-          color += incoming_radiance * cos_theta_i *
-                   brdf->get_reflectance(hit_data, diffuse_color,
-                                         material.specular, w_i, w_o);
-        } else {
-          color += diffuse_color * incoming_radiance * cos_theta_i;
+  return is_replace_all;
+}
 
-          float specular_cos_theta =
-              std::max(0.0f, normal.dot((w_o + w_i).normalize()));
-          color += material.specular * incoming_radiance *
-                   pow(specular_cos_theta, material.phong_exponent);
-        }
-      }
-    }
-    // Reflection
-    if (material.mirror != zero_vector && current_recursion_depth > 0) {
-      if (material.roughness == 0.0f) {
-        const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
-        Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
-                       r_reflection, ray.time);
-        color += material.mirror *
-                 trace_ray(mirror_ray, current_recursion_depth - 1);
-      } else {
-        const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
-        Vector3 r_prime;
-        if (w_r.x < w_r.y && w_r.x < w_r.z) {
-          r_prime = Vector3(1.0f, w_r.y, w_r.z);
-        } else if (w_r.y < w_r.z && w_r.y < w_r.x) {
-          r_prime = Vector3(w_r.x, 1.0f, w_r.z);
-        } else {
-          r_prime = Vector3(w_r.x, w_r.y, 1.0f);
-        }
-        //(u,w_r,v) basis
-        Vector3 u = r_prime.cross(w_r).normalize();
-        Vector3 v = u.cross(w_r).normalize();
-        std::mt19937 glossy_generator_u;
-        glossy_generator_u.seed(
-            std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_real_distribution<float> glossy_distribution_u(-0.5f,
-                                                                    0.5f);
-        std::mt19937 glossy_generator_v;
-        glossy_generator_v.seed(
-            std::chrono::system_clock::now().time_since_epoch().count());
-        std::uniform_real_distribution<float> glossy_distribution_v(-0.5f,
-                                                                    0.5f);
-        float epsilon_u = glossy_distribution_u(glossy_generator_u);
-        float epsilon_v = glossy_distribution_v(glossy_generator_v);
-        const Vector3 w_r_prime =
-            (w_r + material.roughness * (u * epsilon_u + v * epsilon_v))
-                .normalize();
-        Ray mirror_ray(intersection_point + (w_r_prime * shadow_ray_epsilon),
-                       w_r_prime, r_reflection, ray.time);
-        color += material.mirror *
-                 trace_ray(mirror_ray, current_recursion_depth - 1);
-      }
+Vector3 Scene::calculate_diffuse_and_specular_radiance(
+    const Ray& ray, const Hit_data& hit_data,
+    const Vector3& diffuse_constant) const {
+  //
+  Vector3 radiance;
+  const Shape* shape = hit_data.shape;
+  const Vector3 intersection_point = ray.point_at(hit_data.t);
+  const Material& material = materials[shape->get_material_id()];
+  const Vector3 w_o = (ray.o - intersection_point).normalize();
+  const Vector3& normal = hit_data.normal;
+  BRDF* brdf = nullptr;
+  if (material.brdf_id != -1) {
+    brdf = brdfs[material.brdf_id];
+  }
+  // lights
+  for (const Light* light : lights) {
+    float light_distance;
+    float probability;
+    const Vector3 light_direction_vec = light->direction_and_distance(
+        intersection_point, normal, light_distance, probability);
+    const Vector3 w_i = light_direction_vec.normalize();
+
+    // Shadow check
+    Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
+                   r_shadow, ray.time);
+    Hit_data shadow_hit_data;
+    bvh->intersect(shadow_ray, shadow_hit_data);
+    if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
+        shadow_hit_data.t > 0.0f) {
+      continue;
     }
 
-    // Refraction
-    if (material.transparency != zero_vector && current_recursion_depth > 0) {
-      const Vector3 w_r = ((2 * normal.dot(w_o) * normal) - w_o).normalize();
-      Vector3 transmission_direction = zero_vector;
-      float cos_theta = 0.0f;
-      Vector3 k(0.0f);
-      Vector3 d_n = ray.d.normalize();
-      float n = material.refraction_index;
-      bool total_internal_reflection = false;
-      bool entering_ray;
-      if (d_n.dot(normal) < 0.0f) {
-        refract_ray(d_n, normal, n, transmission_direction);
-        cos_theta = (-d_n).dot(normal);
-        k = Vector3(1.0f);
-        entering_ray = true;
-      } else {
-        const Vector3& transparency = material.transparency;
-        const float hit_data_t = hit_data.t;
-        k.x = exp(log(transparency.x) * hit_data_t);
-        k.y = exp(log(transparency.y) * hit_data_t);
-        k.z = exp(log(transparency.z) * hit_data_t);
-        entering_ray = false;
-        if (refract_ray(d_n, -normal, 1.0f / n, transmission_direction)) {
-          cos_theta = transmission_direction.dot(normal);
-        } else {
-          total_internal_reflection = true;
-        }
-      }
+    //
+    Vector3 incoming_radiance =
+        light->incoming_radiance(light_direction_vec, probability);
+    float cos_theta_i = std::max(0.0f, normal.dot(w_i));
+    if (brdf) {
+      radiance += incoming_radiance * cos_theta_i *
+                  brdf->get_reflectance(hit_data, diffuse_constant,
+                                        material.specular, w_i, w_o);
+    } else {
+      radiance += diffuse_constant * incoming_radiance * cos_theta_i;
 
-      if (total_internal_reflection) {
-        Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
-                           r_reflection, ray.time);
-        reflection_ray.in_medium = true;
-        color += k * trace_ray(reflection_ray, current_recursion_depth - 1);
-      } else {
-        float r_0 = ((n - 1) * (n - 1)) / ((n + 1) * (n + 1));
-        float r = r_0 + (1 - r_0) * pow(1.0f - cos_theta, 5);
-        Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
-                           r_reflection, ray.time);
-        reflection_ray.in_medium = !entering_ray;
-        Ray transmission_ray(
-            intersection_point + (transmission_direction * shadow_ray_epsilon),
-            transmission_direction, r_refraction, ray.time);
-        transmission_ray.in_medium = entering_ray;
-        color +=
-            k * (r * trace_ray(reflection_ray, current_recursion_depth - 1) +
-                 (1 - r) *
-                     trace_ray(transmission_ray, current_recursion_depth - 1));
-      }
+      float specular_cos_theta =
+          std::max(0.0f, normal.dot((w_o + w_i).normalize()));
+      radiance += material.specular * incoming_radiance *
+                  pow(specular_cos_theta, material.phong_exponent);
     }
   }
-  return color;
+  return radiance;
+}
+Vector3 Scene::trace_path(const Ray& ray, const Hit_data& hit_data,
+                          int recursion_level) const {
+  Vector3 radiance;
+  if (hit_data.is_light_object) {
+    if (ray.light_hit) {
+      return radiance;
+    } else {
+      return hit_data.radiance;
+    }
+  }
+  Ray new_ray = ray;
+  return radiance;
+}
+Vector3 Scene::trace_ray(const Ray& ray, const Hit_data& hit_data,
+                         int recursion_level) const {
+  Vector3 radiance;
+  if (hit_data.is_light_object) {
+    return hit_data.radiance;
+  }
+
+  const Material& material = materials[hit_data.shape->get_material_id()];
+  Vector3 diffuse_constant;
+
+  if (calculate_diffuse_constant(hit_data, diffuse_constant)) {
+    // Returns texture color if texture is replace all
+    return diffuse_constant;
+  }
+
+  if (!ray.in_medium) {
+    radiance += material.ambient * ambient_light;
+    radiance += calculate_diffuse_and_specular_radiance(ray, hit_data,
+                                                        diffuse_constant);
+  }
+
+  // Reflection
+  if (material.mirror != zero_vector && recursion_level < max_recursion_depth) {
+    radiance += material.mirror * reflect_ray(ray, hit_data, recursion_level);
+  }
+
+  // Refraction
+  if (material.transparency != zero_vector &&
+      recursion_level < max_recursion_depth) {
+    radiance += refract_ray(ray, hit_data, recursion_level);
+  }
+  return radiance;
 }
 
 Scene::Scene(const std::string& file_name) {
@@ -709,16 +756,19 @@ Scene::Scene(const std::string& file_name) {
     stream.clear();
   }
   element = root->FirstChildElement("Lights");
-  element = element->FirstChildElement("SphericalDirectionalLight");
   if (element) {
-    std::string envmap_name;
-    float coverage_angle_in_radians, falloff_angle_in_radians;
-    auto child = element->FirstChildElement("EnvMapName");
-    envmap_name = child->GetText();
-    spherical_directional_light = new Spherical_directional_light(envmap_name);
-    lights.push_back(spherical_directional_light);
+    element = element->FirstChildElement("SphericalDirectionalLight");
+    if (element) {
+      std::string envmap_name;
+      float coverage_angle_in_radians, falloff_angle_in_radians;
+      auto child = element->FirstChildElement("EnvMapName");
+      envmap_name = child->GetText();
+      spherical_directional_light =
+          new Spherical_directional_light(envmap_name);
+      lights.push_back(spherical_directional_light);
+    }
+    stream.clear();
   }
-  stream.clear();
 
   debug("Lights are parsed");
   // Lights End

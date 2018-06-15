@@ -42,13 +42,13 @@ Vector3 Light_sphere::direction_and_distance(const Vector3& from_point,
   light_hit_data.t = std::numeric_limits<float>::infinity();
   light_hit_data.shape = NULL;
   Sphere::intersect(ray_in_world_space, light_hit_data);
-  if (!light_hit_data.shape) {
-    std::cout << "wtf" << std::endl;
-  }
+  // if (!light_hit_data.shape) {
+  //  std::cout << "wtf" << std::endl;
+  //}
   distance = light_hit_data.t;
   probability = 1 / (2 * M_PI * (1 - cos_theta_max));
   if (isnan(probability)) {
-    std::cout << "wtf2" << std::endl;
+    std::cout << "wtf nan" << std::endl;
   }
   return l_in_world_space;
 }

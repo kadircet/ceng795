@@ -59,9 +59,24 @@ class Scene {
   ~Scene();
 
  private:
-  Vector3 trace_ray(const Ray& ray, int max_recursion_depth) const;
-  bool refract_ray(const Vector3& direction_unit, const Vector3& normal,
-                   const float refraction_index, Vector3& transmitted_d) const;
+  Vector3 send_ray(const Ray& ray, int recursion_level) const;
+  Vector3 trace_ray(const Ray& ray, const Hit_data& hit_data,
+                    int recursion_level) const;
+  Vector3 trace_path(const Ray& ray, const Hit_data& hit_data,
+                     int recursion_level) const;
+  Vector3 reflect_ray(const Ray& ray, const Hit_data& hit_data,
+                      int recursion_level) const;
+  Vector3 refract_ray(const Ray& ray, const Hit_data& hit_data,
+                      int recursion_level) const;
+  Vector3 calculate_diffuse_and_specular_radiance(
+      const Ray& ray, const Hit_data& hit_data,
+      const Vector3& diffuse_constant) const;
+  bool calculate_diffuse_constant(const Hit_data& hit_data,
+                                  Vector3& diffuse_constant_out) const;
+  bool calculate_transmission(const Vector3& direction_unit,
+                              const Vector3& normal,
+                              const float refraction_index,
+                              Vector3& transmitted_d) const;
   void parse_ply_tinyply(std::string filename, std::vector<Vertex>& vertices,
                          std::vector<Shape*>& mesh_triangles, int vertex_offset,
                          int texture_offset, int material_id, int texture_id,

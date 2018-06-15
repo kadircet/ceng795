@@ -3,7 +3,17 @@
 #define HIT_DATA_H_
 #include "Vector3.h"
 class Shape;
-struct Hit_data {
+class Hit_data {
+ public:
+  Hit_data()
+      : t(std::numeric_limits<float>::infinity()),
+        shape(nullptr),
+        is_light_object(false),
+        normal(0.0f),
+        u(0.0f),
+        v(0.0f),
+        perlin_value(0.0f),
+        radiance(0.0f) {}
   float t;
   const Shape* shape;
   Vector3 normal;
