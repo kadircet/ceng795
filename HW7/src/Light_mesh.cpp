@@ -34,10 +34,12 @@ Vector3 Light_mesh::direction_and_distance(const Vector3& from_point,
   const Vector3& p_1 = vertex_1.get_vertex_position();
   const Vector3& p_2 = vertex_2.get_vertex_position();
   // std::cout << triangle->normal << std::endl;
-  Vector3 q = (1.0f - epsilon_2) * p_1 + epsilon_2 * p_2;
-  Vector3 p = (1.0f - epsilon_1) * p_0 + epsilon_1 * q;
-
-  const Vector3 direction = p - from_point;
+  Vector3 q_in_object_space = (1.0f - epsilon_2) * p_1 + epsilon_2 * p_2;
+  Vector3 p_in_object_space =
+      (1.0f - epsilon_1) * p_0 + epsilon_1 * q_in_object_space;
+  Vector3 p_in_world_space =
+      base_transform.get_transformation_matrix().multiply(p_in_object_space);
+  const Vector3 direction = p_in_world_space - from_point;
   distance = direction.length();
   float cos_theta_i =
       std::max(0.001f, -direction.normalize().dot(triangle->normal));

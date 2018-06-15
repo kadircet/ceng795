@@ -1081,6 +1081,36 @@ Scene::Scene(const std::string& file_name) {
     child = element->FirstChildElement("Radiance");
     stream << child->GetText() << std::endl;
     stream >> radiance.x >> radiance.y >> radiance.z;
+    Matrix4x4 arbitrary_transformation(true);
+    child = element->FirstChildElement("Transformations");
+    if (child) {
+      char type;
+      int index;
+      stream.clear();
+      stream << child->GetText() << std::endl;
+      while (!(stream >> type).eof()) {
+        stream >> index;
+        index--;
+        switch (type) {
+          case 's':
+            arbitrary_transformation =
+                scaling_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+          case 't':
+            arbitrary_transformation =
+                translation_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+          case 'r':
+            arbitrary_transformation =
+                rotation_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+        }
+      }
+      stream.clear();
+    }
     std::vector<Shape*> triangles;
     child = element->FirstChildElement("Faces");
     int vertex_offset = child->IntAttribute("vertexOffset", 0);
@@ -1104,8 +1134,9 @@ Scene::Scene(const std::string& file_name) {
           .add_vertex_normal(surface_normal, area);
       triangles.push_back(triangle);
     }
-    Light_mesh* light_mesh =
-        new Light_mesh(this, material_id, triangles, radiance);
+    Light_mesh* light_mesh = new Light_mesh(
+        this, material_id, Arbitrary_transformation(arbitrary_transformation),
+        triangles, radiance);
     lights.push_back(light_mesh);
     objects.push_back(light_mesh);
     element = element->NextSiblingElement("LightMesh");
