@@ -6,13 +6,24 @@ Texture::Texture(const std::string& image_name,
                  const std::string& interpolation_type,
                  const std::string& decal_mode, const std::string& appearance,
                  const float normalizer, const float scaling_factor,
-                 const bool is_bump, const float bumpmap_multiplier) {
+                 const bool is_bump, const float bumpmap_multiplier,
+                 const bool is_degamma) {
   int n;
   if (image_name != std::string("perlin")) {
-    texture_image_ = stbi_load(image_name.c_str(), &width_, &height_, &n, 3);
+    unsigned char* texture_image;
+    texture_image = stbi_load(image_name.c_str(), &width_, &height_, &n, 3);
+    int size = width_ * height_;
+    for (int i = 0; i < size; i++) {
+      if (is_degamma) {
+        texture_image_.push_back(std::pow(texture_image[i] / 255.0f, 2.2) *
+                                 255.0f);
+      } else {
+        texture_image_.push_back(texture_image[i]);
+      }
+    }
+    if (texture_image) stbi_image_free(texture_image);
     perlin_noise_ = nullptr;
   } else {
-    texture_image_ = nullptr;
     perlin_noise_ = new Perlin_noise(appearance, scaling_factor);
   }
   appearance_ = to_appearance(appearance);
@@ -33,12 +44,10 @@ Texture::Texture(Texture&& rhs)
       perlin_noise_(rhs.perlin_noise_),
       is_bump_(rhs.is_bump_),
       bumpmap_multiplier_(rhs.bumpmap_multiplier_) {
-  rhs.texture_image_ = nullptr;
   rhs.perlin_noise_ = nullptr;
 }
 
 Texture::~Texture() {
-  if (texture_image_) stbi_image_free(texture_image_);
   if (perlin_noise_) free(perlin_noise_);
 }
 Vector3 Texture::blend_color(const Vector3& texture_color,

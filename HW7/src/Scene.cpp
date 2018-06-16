@@ -477,7 +477,7 @@ Scene::Scene(const std::string& file_name) {
   if (element) {
     const std::string& bg_tex_name = element->GetText();
     background_texture = new Texture(bg_tex_name, "bilinear", "replace_all",
-                                     "clamp", 255, 1.0f, false, 1.0f);
+                                     "clamp", 255, 1.0f, false, 1.0f, false);
   } else {
     background_texture = nullptr;
   }
@@ -1509,7 +1509,7 @@ Scene::Scene(const std::string& file_name) {
       if (child) {
         appearance = child->GetText();
       } else {
-        appearance = "clamp";
+        appearance = "repeat";
       }
       child = element->FirstChildElement("Normalizer");
       if (child) {
@@ -1530,7 +1530,8 @@ Scene::Scene(const std::string& file_name) {
       stream >> normalizer >> scaling_factor;
       textures.push_back(std::move(
           Texture(image_name, interpolation_type, decal_mode, appearance,
-                  normalizer, scaling_factor, is_bump, bumpmap_multiplier)));
+                  normalizer, scaling_factor, is_bump, bumpmap_multiplier,
+                  element->BoolAttribute("degamma", false))));
 
       element = element->NextSiblingElement("Texture");
     }
