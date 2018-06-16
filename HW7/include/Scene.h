@@ -28,7 +28,7 @@
 #include "Vector3.h"
 #include "Vertex.h"
 class Pixel;
-
+enum Integrator_type { it_pathtracing, it_raytracing };
 class Scene {
  public:
   Vector3 background_color;
@@ -48,6 +48,8 @@ class Scene {
   std::vector<Vector3> texture_coord_data;
   std::vector<Texture> textures;
   std::vector<BRDF*> brdfs;
+  Integrator_type integrator_type;
+  bool is_uniform_sampling;
   Spherical_directional_light* spherical_directional_light;
   inline const Vertex& get_vertex_at(int index) const {
     return vertex_data[index];

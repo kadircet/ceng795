@@ -2,7 +2,7 @@
 #ifndef RAY_H_
 #define RAY_H_
 #include "Vector3.h"
-enum Ray_type { r_primary, r_shadow, r_reflection, r_refraction };
+enum Ray_type { r_primary, r_shadow, r_reflection, r_refraction, r_path };
 class Ray {
  public:
   Vector3 o;

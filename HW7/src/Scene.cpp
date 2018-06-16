@@ -158,6 +158,7 @@ Vector3 Scene::refract_ray(const Ray& ray, const Hit_data& hit_data,
     Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
                        r_reflection, ray.time);
     reflection_ray.in_medium = true;
+    reflection_ray.light_hit = ray.light_hit;
     return k * send_ray(reflection_ray, recursion_level + 1);
   } else {
     float r_0 = ((n - 1) * (n - 1)) / ((n + 1) * (n + 1));
@@ -165,10 +166,12 @@ Vector3 Scene::refract_ray(const Ray& ray, const Hit_data& hit_data,
     Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
                        r_reflection, ray.time);
     reflection_ray.in_medium = !entering_ray;
+    reflection_ray.light_hit = ray.light_hit;
     Ray transmission_ray(
         intersection_point + (transmission_direction * shadow_ray_epsilon),
         transmission_direction, r_refraction, ray.time);
     transmission_ray.in_medium = entering_ray;
+    transmission_ray.light_hit = ray.light_hit;
     return k * (r * send_ray(reflection_ray, recursion_level + 1) +
                 (1 - r) * send_ray(transmission_ray, recursion_level + 1));
   }
@@ -188,7 +191,10 @@ Vector3 Scene::send_ray(const Ray& ray, int recursion_level) const {
     }
     return 0.0f;
   }
-  return trace_ray(ray, hit_data, recursion_level);
+  if (integrator_type == it_raytracing)
+    return trace_ray(ray, hit_data, recursion_level);
+  else
+    return trace_path(ray, hit_data, recursion_level);
 }
 
 Vector3 Scene::reflect_ray(const Ray& ray, const Hit_data& hit_data,
@@ -226,6 +232,7 @@ Vector3 Scene::reflect_ray(const Ray& ray, const Hit_data& hit_data,
             .normalize();
     Ray mirror_ray(intersection_point + (w_r_prime * shadow_ray_epsilon),
                    w_r_prime, r_reflection, ray.time);
+    mirror_ray.light_hit = ray.light_hit;
     return send_ray(mirror_ray, recursion_level + 1);
   }
 }
@@ -280,32 +287,33 @@ Vector3 Scene::calculate_diffuse_and_specular_radiance(
     const Vector3 light_direction_vec = light->direction_and_distance(
         intersection_point, normal, light_distance, probability);
     const Vector3 w_i = light_direction_vec.normalize();
+    if (normal.dot(light_direction_vec) >= 0.0f) {
+      // Shadow check
+      Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
+                     r_shadow, ray.time);
+      Hit_data shadow_hit_data;
+      bvh->intersect(shadow_ray, shadow_hit_data);
+      if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
+          shadow_hit_data.t > 0.0f) {
+        continue;
+      }
 
-    // Shadow check
-    Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
-                   r_shadow, ray.time);
-    Hit_data shadow_hit_data;
-    bvh->intersect(shadow_ray, shadow_hit_data);
-    if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
-        shadow_hit_data.t > 0.0f) {
-      continue;
-    }
+      //
+      Vector3 incoming_radiance =
+          light->incoming_radiance(light_direction_vec, probability);
+      float cos_theta_i = std::max(0.0f, normal.dot(w_i));
+      if (brdf) {
+        radiance += incoming_radiance * cos_theta_i *
+                    brdf->get_reflectance(hit_data, diffuse_constant,
+                                          material.specular, w_i, w_o);
+      } else {
+        radiance += diffuse_constant * incoming_radiance * cos_theta_i;
 
-    //
-    Vector3 incoming_radiance =
-        light->incoming_radiance(light_direction_vec, probability);
-    float cos_theta_i = std::max(0.0f, normal.dot(w_i));
-    if (brdf) {
-      radiance += incoming_radiance * cos_theta_i *
-                  brdf->get_reflectance(hit_data, diffuse_constant,
-                                        material.specular, w_i, w_o);
-    } else {
-      radiance += diffuse_constant * incoming_radiance * cos_theta_i;
-
-      float specular_cos_theta =
-          std::max(0.0f, normal.dot((w_o + w_i).normalize()));
-      radiance += material.specular * incoming_radiance *
-                  pow(specular_cos_theta, material.phong_exponent);
+        float specular_cos_theta =
+            std::max(0.0f, normal.dot((w_o + w_i).normalize()));
+        radiance += material.specular * incoming_radiance *
+                    pow(specular_cos_theta, material.phong_exponent);
+      }
     }
   }
   return radiance;
@@ -320,7 +328,97 @@ Vector3 Scene::trace_path(const Ray& ray, const Hit_data& hit_data,
       return hit_data.radiance;
     }
   }
-  Ray new_ray = ray;
+  Ray ray_copy = ray;
+  Vector3 diffuse_constant;
+  Vector3 direct_cont(0.0f);
+  if (calculate_diffuse_constant(hit_data, diffuse_constant)) {
+    std::cerr << "Path tracing with replace all decal mode is kinda weird"
+              << std::endl;
+  }
+
+  if (!ray.in_medium) {
+    direct_cont = calculate_diffuse_and_specular_radiance(ray, hit_data,
+                                                          diffuse_constant);
+  }
+  if (direct_cont != Vector3(0.0f)) {
+    ray_copy.light_hit = true;
+    radiance += direct_cont;
+  }
+  const Material& material = materials[hit_data.shape->get_material_id()];
+  BRDF* brdf = nullptr;
+  if (material.brdf_id != -1) {
+    brdf = brdfs[material.brdf_id];
+  }
+  if (!ray.in_medium && recursion_level < max_recursion_depth) {
+    Vector3 intersection_point = ray.point_at(hit_data.t);
+
+    // Sample hemisphere
+    thread_local static std::random_device rd;
+    thread_local static std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> uniform_dist(0.0f, 1.0f);
+    float epsilon_1 = uniform_dist(generator);
+    float epsilon_2 = uniform_dist(generator);
+
+    float phi;
+    float theta;
+    Vector3 w = hit_data.normal;
+    const Vector3 u = ((w.x != 0.0f || w.y != 0.0f) ? Vector3(-w.y, w.x, 0.0f)
+                                                    : Vector3(0.0f, 1.0f, 0.0f))
+                          .normalize();
+    const Vector3 v = w.cross(u);
+    if (is_uniform_sampling) {
+      phi = 2 * M_PI * epsilon_1;
+      theta = std::acos(epsilon_2);
+    } else {
+      phi = 2 * M_PI * epsilon_1;
+      theta = std::asin(std::sqrt(epsilon_2));
+    }
+    Vector3 w_i = (w * std::cos(theta) + v * std::sin(theta) * std::cos(phi) +
+                   u * std::sin(theta) * std::sin(phi))
+                      .normalize();
+    //
+    const Vector3& normal = hit_data.normal;
+    float cos_theta_i = std::max(0.0f, normal.dot(w_i));
+    const Vector3 w_o = (ray.o - intersection_point).normalize();
+    Ray sample_ray(intersection_point + (w_i * shadow_ray_epsilon), w_i, r_path,
+                   ray.time);
+    sample_ray.in_medium = ray.in_medium;
+    sample_ray.light_hit = ray.light_hit;
+    Vector3 incoming_radiance = send_ray(sample_ray, recursion_level + 1);
+    float probability;
+    if (is_uniform_sampling) {
+      probability = 1.0f / (2 * M_PI);
+    } else {
+      probability = cos_theta_i / M_PI;
+    }
+    if (probability != 0.0f) {
+      if (brdf) {
+        radiance += incoming_radiance * cos_theta_i *
+                    brdf->get_reflectance(hit_data, diffuse_constant,
+                                          material.specular, w_i, w_o) /
+                    probability;
+      } else {
+        radiance +=
+            diffuse_constant * incoming_radiance * cos_theta_i / probability;
+
+        float specular_cos_theta =
+            std::max(0.0f, normal.dot((w_o + w_i).normalize()));
+        radiance += material.specular * incoming_radiance *
+                    pow(specular_cos_theta, material.phong_exponent) /
+                    probability;
+      }
+    }
+  }
+  if (material.mirror != zero_vector && recursion_level < max_recursion_depth) {
+    radiance +=
+        material.mirror * reflect_ray(ray_copy, hit_data, recursion_level);
+  }
+
+  // Refraction
+  if (material.transparency != zero_vector &&
+      recursion_level < max_recursion_depth) {
+    radiance += refract_ray(ray_copy, hit_data, recursion_level);
+  }
   return radiance;
 }
 Vector3 Scene::trace_ray(const Ray& ray, const Hit_data& hit_data,
@@ -1448,6 +1546,19 @@ Scene::Scene(const std::string& file_name) {
   }
   stream.clear();
   debug("Textures are parsed");
+
+  // Parse IntegratorType
+  element = root->FirstChildElement("Integrator");
+  integrator_type = it_raytracing;
+  if (element && element->GetText() == std::string("PathTracing")) {
+    integrator_type = it_pathtracing;
+    is_uniform_sampling = true;
+    element = root->FirstChildElement("IntegratorParams");
+    if (element && element->GetText() == std::string("ImportanceSampling")) {
+      is_uniform_sampling = false;
+    }
+  }
+
   bvh = BVH::create_bvh(objects);
   // Finalize surface normals
   for (Vertex& vertex : vertex_data) {
