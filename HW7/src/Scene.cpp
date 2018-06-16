@@ -9,8 +9,7 @@
 #include "Pixel.h"
 #include "tinyply.h"
 #include "tinyxml2.h"
-//#define APPLY_FILTER_SINGLE_SAMPLE
-
+//#define GAUSSIAN_FILTER
 inline float gaussian_filter(float x, float y, float sigma) {
   return exp(-(x * x + y * y) / (2 * sigma * sigma)) /
          (float)(2 * M_PI * sigma);
@@ -30,24 +29,7 @@ void Scene::render_image(int camera_index, Pixel* result,
       for (int i = 0; i < width; i++) {
         Vector3 color =
             send_ray(camera.calculate_ray_at(i + 0.5f, j + 0.5f), 0);
-#ifdef APPLY_FILTER_SINGLE_SAMPLE
-        for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
-          if (affected_j < 0 || affected_j >= height) {
-            continue;
-          }
-          for (int affected_i = i - 1; affected_i < i + 2; affected_i++) {
-            if (affected_i < 0 || affected_i >= width) {
-              continue;
-            }
-            float s_x = i - affected_i;
-            float s_y = j - affected_j;
-            result[affected_j * width + affected_i].add_color(
-                color, gaussian_filter(s_x, s_y, 1.5f / 3.0f));
-          }
-        }
-#else
         result[j * width + i].add_color(color, 1.0f);
-#endif
       }
     }
   } else {
@@ -79,7 +61,7 @@ void Scene::render_image(int camera_index, Pixel* result,
                                    dof_epsilon_y, time_distribution(generator)),
                                0);
             }
-
+#ifdef GAUSSIAN_FILTER
             for (int affected_j = j - 1; affected_j < j + 2; affected_j++) {
               if (affected_j < 0 || affected_j >= height) {
                 continue;
@@ -94,6 +76,9 @@ void Scene::render_image(int camera_index, Pixel* result,
                     color, gaussian_filter(s_x, s_y, 1.5f / 3.0f));
               }
             }
+#else
+            result[j * width + i].add_color(color, 1.0f);
+#endif
           }
         }
       }
