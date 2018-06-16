@@ -23,10 +23,18 @@ void Photographic_tmo::apply_tmo(const std::vector<Vector3>& input,
   for (size_t i = 0; i < size; i++) {
     luminances[i] = image_key_ * luminances[i] / log_average_luminance;
   }
+
   std::vector<float> sorted_luminances = luminances;
   std::sort(sorted_luminances.begin(), sorted_luminances.end());
   float white_count = (float)size * saturation_percentage_ / 100.0f;
-  float white_lum = sorted_luminances[size - (size_t)white_count];
+  white_count = std::max(0, std::min((int)size, (int)white_count));
+  float white_lum;
+  if (white_count == 0) {
+    white_lum = sorted_luminances[size - 1];
+  } else {
+    white_lum = sorted_luminances[size - (size_t)white_count];
+  }
+
   for (size_t i = 0; i < size; i++) {
     luminances[i] =
         (luminances[i] * (1 + luminances[i] / (white_lum * white_lum))) /

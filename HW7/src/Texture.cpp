@@ -12,7 +12,7 @@ Texture::Texture(const std::string& image_name,
   if (image_name != std::string("perlin")) {
     unsigned char* texture_image;
     texture_image = stbi_load(image_name.c_str(), &width_, &height_, &n, 3);
-    int size = width_ * height_;
+    int size = width_ * height_ * 3;
     for (int i = 0; i < size; i++) {
       if (is_degamma) {
         texture_image_.push_back(std::pow(texture_image[i] / 255.0f, 2.2) *

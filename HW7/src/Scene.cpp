@@ -278,7 +278,7 @@ Vector3 Scene::calculate_diffuse_and_specular_radiance(
     const Vector3 light_direction_vec = light->direction_and_distance(
         intersection_point, normal, light_distance, probability);
     const Vector3 w_i = light_direction_vec.normalize();
-    if (normal.dot(light_direction_vec) >= 0.0f) {
+    if (normal.dot(w_i) >= 0.0f) {
       // Shadow check
       Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
                      r_shadow, ray.time);
@@ -511,6 +511,15 @@ Scene::Scene(const std::string& file_name) {
   }
   stream >> max_recursion_depth;
   debug("MaxRecursionDepth is parsed");
+  //
+  // Get ZeroBasedIndexing
+  element = root->FirstChildElement("ZeroBasedIndexing");
+  bool zero_based_indexing = false;
+  if (element) {
+    if (std::string(element->GetText()) == std::string("true")) {
+      zero_based_indexing = true;
+    }
+  }
   //
   system("pause");
   // Get Cameras
@@ -988,11 +997,16 @@ Scene::Scene(const std::string& file_name) {
   // Get VertexData
   element = root->FirstChildElement("VertexData");
   if (element) {
-    stream << element->GetText() << std::endl;
-    Vector3 vertex;
-    while (!(stream >> vertex.x).eof()) {
-      stream >> vertex.y >> vertex.z;
-      vertex_data.push_back(Vertex(vertex));
+    const char* binary_file = element->Attribute("binaryFile");
+    if (binary_file) {
+      parse_binary_vertexdata(std::string(binary_file));
+    } else {
+      stream << element->GetText() << std::endl;
+      Vector3 vertex;
+      while (!(stream >> vertex.x).eof()) {
+        stream >> vertex.y >> vertex.z;
+        vertex_data.push_back(Vertex(vertex));
+      }
     }
   }
   stream.clear();
@@ -1002,13 +1016,18 @@ Scene::Scene(const std::string& file_name) {
   // Get TexCoordData
   element = root->FirstChildElement("TexCoordData");
   if (element) {
-    stream << element->GetText() << std::endl;
-    Vector3 uv;
-    while (!(stream >> uv.x).eof()) {
-      stream >> uv.y;
-      texture_coord_data.push_back(uv);
+    const char* binary_file = element->Attribute("binaryFile");
+    if (binary_file) {
+      parse_binary_texturedata(std::string(binary_file));
+    } else {
+      stream << element->GetText() << std::endl;
+      Vector3 uv;
+      while (!(stream >> uv.x).eof()) {
+        stream >> uv.y;
+        texture_coord_data.push_back(uv);
+      }
+      stream.clear();
     }
-    stream.clear();
     debug("TexCoordData is parsed");
   }
   // TexCoordData end
@@ -1084,10 +1103,16 @@ Scene::Scene(const std::string& file_name) {
     int vertex_offset = vertex_data.size();
     int texture_offset = child->IntAttribute("textureOffset", 0);
     const char* ply_file = child->Attribute("plyFile");
+    const char* binary_file = child->Attribute("binaryFile");
     if (ply_file) {
       parse_ply_tinyply(std::string(ply_file), vertex_data, triangles,
                         vertex_offset, texture_offset, material_id, texture_id,
                         triangle_shading_mode);
+    } else if (binary_file) {
+      vertex_offset = child->IntAttribute("vertexOffset", 0);
+      parse_binary_facedata(std::string(binary_file), triangles, vertex_offset,
+                            texture_offset, material_id, texture_id,
+                            triangle_shading_mode, zero_based_indexing);
     } else {
       vertex_offset = child->IntAttribute("vertexOffset", 0);
       stream << child->GetText() << std::endl;
@@ -1747,30 +1772,6 @@ void Scene::parse_ply_tinyply(std::string filename,
         std::vector<int> verts(numFacesBytes / 4);
         std::memcpy(verts.data(), ply_faces->buffer.get(), numFacesBytes);
         if (is_triangle) {
-          for (; index < c; index++) {
-            int index_0 = verts[index * 3];
-            int index_1 = verts[index * 3 + 1];
-            int index_2 = verts[index * 3 + 2];
-            mesh_triangles.push_back(new Mesh_triangle(
-                this, index_0, index_1, index_2, vertex_offset, texture_offset,
-                material_id, texture_id, tsm));
-            Mesh_triangle* triangle =
-                (Mesh_triangle*)*(mesh_triangles.rbegin());
-            if (has_face_normals) {
-              triangle->normal = face_normals[index];
-            }
-            if (!has_vertice_normals) {
-              float area = triangle->get_surface_area();
-              const Vector3& surface_normal = triangle->normal;
-              vertices[index_0 + vertex_offset].add_vertex_normal(
-                  surface_normal, area);
-              vertices[index_1 + vertex_offset].add_vertex_normal(
-                  surface_normal, area);
-              vertices[index_2 + vertex_offset].add_vertex_normal(
-                  surface_normal, area);
-            }
-          }
-
         } else if (is_quad) {
           for (; index < c; index++) {
             int index_0 = verts[index * 4];
@@ -1828,6 +1829,73 @@ void Scene::parse_ply_tinyply(std::string filename,
     std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
     exit(-1);
   }
+}
+
+void Scene::parse_binary_vertexdata(std::string& filename) {
+  FILE* fd = fopen(filename.c_str(), "rb");
+  int N;
+  fread(&N, sizeof(int), 1, fd);
+  for (int i = 0; i < N; i++) {
+    float vi_x, vi_y, vi_z;
+    fread(&vi_x, sizeof(float), 1, fd);
+    fread(&vi_y, sizeof(float), 1, fd);
+    fread(&vi_z, sizeof(float), 1, fd);
+    vertex_data.push_back(Vertex(Vector3(vi_x, vi_y, vi_z)));
+  }
+  fclose(fd);
+}
+
+void Scene::parse_binary_texturedata(std::string& filename) {
+  FILE* fd = fopen(filename.c_str(), "rb");
+  int N;
+  fread(&N, sizeof(int), 1, fd);
+  for (int i = 0; i < N; i++) {
+    float vi_u, vi_v;
+    fread(&vi_u, sizeof(float), 1, fd);
+    fread(&vi_v, sizeof(float), 1, fd);
+    texture_coord_data.push_back(Vector3(vi_u, vi_v, 0.0f));
+  }
+  fclose(fd);
+}
+
+void Scene::parse_binary_facedata(std::string& filename,
+                                  std::vector<Shape*>& mesh_triangles,
+                                  int vertex_offset, int texture_offset,
+                                  int material_id, int texture_id,
+                                  Triangle_shading_mode tsm,
+                                  bool zero_based_indexing) {
+  //
+  FILE* fd = fopen(filename.c_str(), "rb");
+  int N;
+  fread(&N, sizeof(int), 1, fd);
+  for (int i = 0; i < N; i++) {
+    int index_0;
+    int index_1;
+    int index_2;
+    fread(&index_0, sizeof(int), 1, fd);
+    fread(&index_1, sizeof(int), 1, fd);
+    fread(&index_2, sizeof(int), 1, fd);
+    if (!zero_based_indexing) {
+      index_0--;
+      index_1--;
+      index_2--;
+    }
+    mesh_triangles.push_back(new Mesh_triangle(this, index_0, index_1, index_2,
+                                               vertex_offset, texture_offset,
+                                               material_id, texture_id, tsm));
+    Mesh_triangle* triangle = (Mesh_triangle*)*(mesh_triangles.rbegin());
+
+    float area = triangle->get_surface_area();
+    const Vector3& surface_normal = triangle->normal;
+    vertex_data[index_0 + vertex_offset].add_vertex_normal(surface_normal,
+                                                           area);
+    vertex_data[index_1 + vertex_offset].add_vertex_normal(surface_normal,
+                                                           area);
+    vertex_data[index_2 + vertex_offset].add_vertex_normal(surface_normal,
+                                                           area);
+  }
+  std::cout << filename << " is parsed" << std::endl;
+  fclose(fd);
 }
 Scene::~Scene() {
   /*delete bvh;
