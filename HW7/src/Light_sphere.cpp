@@ -41,7 +41,7 @@ Vector3 Light_sphere::direction_and_distance(const Vector3& from_point,
   Hit_data light_hit_data;
   light_hit_data.t = std::numeric_limits<float>::infinity();
   light_hit_data.shape = NULL;
-  Sphere::intersect(ray_in_world_space, light_hit_data);
+  Sphere::intersect(ray_in_world_space, light_hit_data, true);
   // if (!light_hit_data.shape) {
   //  std::cout << "wtf" << std::endl;
   //}

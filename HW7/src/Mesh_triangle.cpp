@@ -53,7 +53,8 @@ float Mesh_triangle::get_surface_area() const {
                            .get_vertex_position();
   return (v_1 - v_0).cross(v_2 - v_0).length() / 2;
 }
-bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
+bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data,
+                              bool culling) const {
   const Vertex& vertex_0 =
       scene_->get_vertex_at(vertex_index_0 + vertex_offset);
   const Vertex& vertex_1 =
@@ -66,11 +67,10 @@ bool Mesh_triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
   const Vector3 a_col1 = p_0 - p_1;
   const Vector3 a_col2 = p_0 - p_2;
   const Vector3& a_col3 = ray.d;
-#ifdef CULLING_ENABLED
-  if (a_col3.dot(normal) > 0) {
+
+  if (culling && a_col3.dot(normal) > 0.0f) {
     return false;
   }
-#endif
 
   const float det_a = determinant(a_col1, a_col2, a_col3);
   if (det_a == 0.0f) {

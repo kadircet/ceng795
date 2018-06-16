@@ -29,7 +29,7 @@ Sphere::Sphere(const Scene* scene, const Vector3& center, float radius,
   }
 }
 
-bool Sphere::intersect(const Ray& ray, Hit_data& hit_data) const {
+bool Sphere::intersect(const Ray& ray, Hit_data& hit_data, bool culling) const {
   static const Vector3 zero_vector(0.0f);
   Vector3 delta_position = ray.time * velocity;
   Translation translation(delta_position.x, delta_position.y, delta_position.z);

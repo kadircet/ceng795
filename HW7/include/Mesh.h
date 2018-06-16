@@ -18,8 +18,9 @@ class Mesh : public Shape {
   Vector3 velocity;
   Transformation base_transform;
 
-  bool intersect(const Ray& ray, Hit_data& hit_data) const override {
-    if (bvh->intersect(ray, hit_data)) {
+  bool intersect(const Ray& ray, Hit_data& hit_data,
+                 bool culling) const override {
+    if (bvh->intersect(ray, hit_data, culling)) {
       hit_data.is_light_object = false;
       return true;
     }
@@ -61,12 +62,16 @@ class Mesh_instance : public Shape {
   int material_id;
   int texture_id;
   Vector3 velocity;
-  bool intersect(const Ray& ray, Hit_data& hit_data) const override {
+  bool intersect(const Ray& ray, Hit_data& hit_data,
+                 bool culling) const override {
     static const Vector3 zero_vector(0.0f);
     // Checking if ray hits the world space bounding box
     float bbox_t = bounding_box_.intersect(ray);
     if (bbox_t < 0.0f || bbox_t == kInf) {
       return false;
+    }
+    if (is_refractive_) {
+      culling = false;
     }
     if (velocity == zero_vector) {
       const Matrix4x4& inverse_transformation =
@@ -74,7 +79,7 @@ class Mesh_instance : public Shape {
       Ray ray_local(inverse_transformation.multiply(ray.o),
                     inverse_transformation.multiply(ray.d, true), ray.ray_type,
                     ray.time);
-      if (mesh_->intersect(ray_local, hit_data)) {
+      if (mesh_->intersect(ray_local, hit_data, culling)) {
         hit_data.normal = transformation_.get_normal_transformation_matrix()
                               .multiply(hit_data.normal, true)
                               .normalize();
@@ -97,7 +102,7 @@ class Mesh_instance : public Shape {
       Ray ray_local(inverse_transformation.multiply(ray.o),
                     inverse_transformation.multiply(ray.d, true), ray.ray_type,
                     ray.time);
-      if (mesh_->intersect(ray_local, hit_data)) {
+      if (mesh_->intersect(ray_local, hit_data, culling)) {
         hit_data.normal = transformation.get_normal_transformation_matrix()
                               .multiply(hit_data.normal, true)
                               .normalize();
@@ -116,14 +121,16 @@ class Mesh_instance : public Shape {
   }
 
   Mesh_instance(int material_id, int texture_id, const Mesh* mesh,
-                const Transformation& transformation, const Vector3& velocity)
+                const Transformation& transformation, const Vector3& velocity,
+                bool is_refractive)
       : material_id(material_id),
         texture_id(texture_id),
         velocity(velocity),
         mesh_(mesh),
         transformation_(transformation),
         bounding_box_(Bounding_box::apply_transform(mesh->get_bounding_box(),
-                                                    transformation)) {
+                                                    transformation)),
+        is_refractive_(is_refractive) {
     if (velocity != Vector3(0.0f)) {
       Vector3 min = bounding_box_.min_corner;
       Vector3 max = bounding_box_.max_corner;
@@ -138,5 +145,6 @@ class Mesh_instance : public Shape {
   const Mesh* mesh_;
   const Transformation transformation_;
   Bounding_box bounding_box_;
+  bool is_refractive_;
 };
 #endif

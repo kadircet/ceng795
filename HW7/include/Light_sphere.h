@@ -13,8 +13,9 @@ class Light_sphere : public Light, public Sphere {
       : radiance_(radiance),
         Sphere(scene, center, radius, material_id, -1, transformation,
                Vector3(0.0f)) {}
-  bool intersect(const Ray& ray, Hit_data& hit_data) const override {
-    if (Sphere::intersect(ray, hit_data)) {
+  bool intersect(const Ray& ray, Hit_data& hit_data,
+                 bool culling) const override {
+    if (Sphere::intersect(ray, hit_data, culling)) {
       hit_data.is_light_object = true;
       hit_data.radiance = radiance_;
       return true;

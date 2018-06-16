@@ -49,13 +49,14 @@ class Light_mesh : public Light, public Mesh {
       cdf_.push_back(current_cumulative_area / total_area_);
     }
   }
-  bool intersect(const Ray& ray, Hit_data& hit_data) const override {
+  bool intersect(const Ray& ray, Hit_data& hit_data,
+                 bool culling) const override {
     const Matrix4x4& inverse_transformation_matrix =
         base_transform.get_inverse_transformation_matrix();
     Ray ray_local(inverse_transformation_matrix.multiply(ray.o),
                   inverse_transformation_matrix.multiply(ray.d, true),
                   ray.ray_type, ray.time);
-    if (Mesh::intersect(ray_local, hit_data)) {
+    if (Mesh::intersect(ray_local, hit_data, culling)) {
       hit_data.normal = base_transform.get_normal_transformation_matrix()
                             .multiply(hit_data.normal, true)
                             .normalize();

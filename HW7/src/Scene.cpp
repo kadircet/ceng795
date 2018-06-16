@@ -167,7 +167,7 @@ Vector3 Scene::refract_ray(const Ray& ray, const Hit_data& hit_data,
 
 Vector3 Scene::send_ray(const Ray& ray, int recursion_level) const {
   Hit_data hit_data;
-  if (!bvh->intersect(ray, hit_data)) {
+  if (!bvh->intersect(ray, hit_data, true)) {
     if (ray.ray_type == r_primary) {
       if (background_texture) {
         return background_texture->get_color_at(ray.bg_u, ray.bg_v);
@@ -283,7 +283,7 @@ Vector3 Scene::calculate_diffuse_and_specular_radiance(
       Ray shadow_ray(intersection_point + (shadow_ray_epsilon * w_i), w_i,
                      r_shadow, ray.time);
       Hit_data shadow_hit_data;
-      bvh->intersect(shadow_ray, shadow_hit_data);
+      bvh->intersect(shadow_ray, shadow_hit_data, true);
       if (shadow_hit_data.t < (light_distance - shadow_ray_epsilon) &&
           shadow_hit_data.t > 0.0f) {
         continue;
@@ -1148,9 +1148,11 @@ Scene::Scene(const std::string& file_name) {
 
   // Create base mesh instances
   for (Mesh* mesh : meshes) {
-    objects.push_back(new Mesh_instance(mesh->get_material_id(),
-                                        mesh->texture_id, mesh,
-                                        mesh->base_transform, mesh->velocity));
+    const Material& material = materials[mesh->get_material_id()];
+    bool is_refractive = material.transparency != Vector3(0.0f);
+    objects.push_back(
+        new Mesh_instance(mesh->get_material_id(), mesh->texture_id, mesh,
+                          mesh->base_transform, mesh->velocity, is_refractive));
   }
   debug("Created base_mesh_instances");
 
@@ -1223,9 +1225,12 @@ Scene::Scene(const std::string& file_name) {
       stream >> velocity.x >> velocity.y >> velocity.z;
     }
     stream.clear();
-    objects.push_back(new Mesh_instance(
-        material_id, texture_id, base_mesh,
-        Arbitrary_transformation(arbitrary_transformation), velocity));
+    const Material& material = materials[material_id];
+    bool is_refractive = material.transparency != Vector3(0.0f);
+    objects.push_back(
+        new Mesh_instance(material_id, texture_id, base_mesh,
+                          Arbitrary_transformation(arbitrary_transformation),
+                          velocity, is_refractive));
     element = element->NextSiblingElement("MeshInstance");
   }
   stream.clear();

@@ -28,7 +28,7 @@ BVH::BVH(std::vector<Shape*>& objects, int start, int end, int dimension)
   }
 }
 
-bool BVH::intersect(const Ray& ray, Hit_data& hit_data) const {
+bool BVH::intersect(const Ray& ray, Hit_data& hit_data, bool culling) const {
   float bbox_t = bounding_box.intersect(ray);
   if (bbox_t < 0.0f || bbox_t == kInf) {
     return false;
@@ -38,7 +38,7 @@ bool BVH::intersect(const Ray& ray, Hit_data& hit_data) const {
   left_hit_data.t = std::numeric_limits<float>::infinity();
   left_hit_data.shape = NULL;
   left_hit_data.is_light_object = false;
-  if (left->intersect(ray, left_hit_data) && left_hit_data.t > 0.0f &&
+  if (left->intersect(ray, left_hit_data, culling) && left_hit_data.t > 0.0f &&
       left_hit_data.t < hit_data.t) {
     hit_data = left_hit_data;
     intersect = true;
@@ -47,8 +47,8 @@ bool BVH::intersect(const Ray& ray, Hit_data& hit_data) const {
   right_hit_data.t = std::numeric_limits<float>::infinity();
   right_hit_data.shape = NULL;
   right_hit_data.is_light_object = false;
-  if (right->intersect(ray, right_hit_data) && right_hit_data.t > 0.0f &&
-      right_hit_data.t < hit_data.t) {
+  if (right->intersect(ray, right_hit_data, culling) &&
+      right_hit_data.t > 0.0f && right_hit_data.t < hit_data.t) {
     intersect = true;
     hit_data = right_hit_data;
   }

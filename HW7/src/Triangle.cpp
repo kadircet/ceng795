@@ -54,11 +54,8 @@ float Triangle::get_surface_area() const {
       scene_->get_vertex_at(index_2 + offset).get_vertex_position();
   return (v_1 - v_0).cross(v_2 - v_0).length() / 2;
 }
-bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
-  // May hold a_col1 and acol_2 as member?
-  /*if (!ray.shadow && ray.d.dot(normal) > 0.0f) {
-    return hit_data;
-  }*/
+bool Triangle::intersect(const Ray& ray, Hit_data& hit_data,
+                         bool culling) const {
   const Vector3& v_0 =
       scene_->get_vertex_at(index_0 + offset).get_vertex_position();
   const Vector3& v_1 =
@@ -67,8 +64,12 @@ bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
       scene_->get_vertex_at(index_2 + offset).get_vertex_position();
   const Vector3 a_col1 = v_0 - v_1;
   const Vector3 a_col2 = v_0 - v_2;
+
   if (is_identity_) {
     const Vector3& a_col3 = ray.d;
+    if (culling && a_col3.dot(normal) > 0) {
+      return false;
+    }
     const float det_a = determinant(a_col1, a_col2, a_col3);
     if (det_a == 0.0f) {
       return false;
@@ -96,6 +97,9 @@ bool Triangle::intersect(const Ray& ray, Hit_data& hit_data) const {
                         inverse_transformation.multiply(ray.d, true),
                         ray.ray_type);
     const Vector3& a_col3 = ray_local.d;
+    if (culling && a_col3.dot(normal) > 0) {
+      return false;
+    }
     const float det_a = determinant(a_col1, a_col2, a_col3);
     if (det_a == 0.0f) {
       return false;

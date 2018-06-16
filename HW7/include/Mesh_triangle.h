@@ -21,7 +21,8 @@ class Mesh_triangle : public Shape {
   Mesh_triangle(const Scene* scene, int vertex_index_0, int vertex_index_1,
                 int vertex_index_2, int vertex_offset, int texture_offset,
                 int material_id, int texture_id, Triangle_shading_mode tsm);
-  bool intersect(const Ray& ray, Hit_data& hit_data) const override;
+  bool intersect(const Ray& ray, Hit_data& hit_data,
+                 bool culling) const override;
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;
   }

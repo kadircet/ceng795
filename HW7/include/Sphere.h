@@ -26,7 +26,8 @@ class Sphere : public Shape {
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;
   }
-  bool intersect(const Ray& ray, Hit_data& hit_data) const override;
+  bool intersect(const Ray& ray, Hit_data& hit_data,
+                 bool culling) const override;
   void print_debug(int indentation) const override {
     for (int index = 0; index < indentation; index++) {
       std::cout << "\t";

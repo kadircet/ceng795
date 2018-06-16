@@ -17,7 +17,8 @@ class Triangle : public Shape {
   Triangle(const Scene* scene, int index_0, int index_1, int index_2,
            int offset, int material_id, int texture_id,
            const Transformation& transformation);
-  bool intersect(const Ray& ray, Hit_data& hit_data) const override;
+  bool intersect(const Ray& ray, Hit_data& hit_data,
+                 bool culling) const override;
   const Bounding_box& get_bounding_box() const override {
     return bounding_box_;
   }
