@@ -3,7 +3,7 @@
 #define SHAPE_H_
 #include "Bounding_box.h"
 #include "Hit_data.h"
-#define CULLING_ENABLED
+//#define CULLING_ENABLED
 class Ray;
 class Shape {
  public:

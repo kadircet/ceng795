@@ -130,6 +130,9 @@ Vector3 Scene::refract_ray(const Ray& ray, const Hit_data& hit_data,
     k.x = exp(log(transparency.x) * hit_data_t);
     k.y = exp(log(transparency.y) * hit_data_t);
     k.z = exp(log(transparency.z) * hit_data_t);
+    // k.x = std::pow(transparency.x, hit_data_t);
+    // k.y = std::pow(transparency.y, hit_data_t);
+    // k.z = std::pow(transparency.z, hit_data_t);
     entering_ray = false;
     if (calculate_transmission(d_n, -normal, 1.0f / n,
                                transmission_direction)) {
@@ -173,7 +176,10 @@ Vector3 Scene::send_ray(const Ray& ray, int recursion_level) const {
       } else {
         return background_color;
       }
+    } else if (spherical_directional_light) {
+      return spherical_directional_light->incoming_radiance(ray.d, 1.0f);
     }
+
     return 0.0f;
   }
   if (integrator_type == it_raytracing)
