@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.11)
 
 project (raytracer)
 # The version number
-set(raytracer_VERSION_MAJOR 6)
+set(raytracer_VERSION_MAJOR 7)
 set(raytracer_VERSION_MINOR 0)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
