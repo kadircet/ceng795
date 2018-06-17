@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include "Scene.h"
 #include "Vector3.h"
 #include "lodepng.h"
 #include "timeutil.h"
@@ -16,7 +17,8 @@ int main(int argc, char* argv[]) {
     std::cerr << "Please provide scene file as argument" << std::endl;
     return 1;
   }
-  // Scene scene(argv[1]);
+  system("pause");
+  Scene scene(argv[1]);
   std::cout << "Scene is parsed" << std::endl;
   const int thread_count =
       std::thread::hardware_concurrency() * THREAD_MULTIPLIER;

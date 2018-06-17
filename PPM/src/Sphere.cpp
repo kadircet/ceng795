@@ -1,5 +1,6 @@
 #include "Sphere.h"
 #include <algorithm>
+#include <sstream>
 #include "Ray.h"
 #include "Scene.h"
 //#include "Texture.h"
@@ -66,4 +67,78 @@ void Sphere::get_uv(const Vector3& local_coordinates, float& u,
   float phi = atan2(local_coordinates.z, local_coordinates.x);
   u = (M_PI - phi) / (2 * M_PI);
   v = theta / M_PI;
+}
+
+void Sphere::load_spheres_from_xml(
+    const Scene* scene, tinyxml2::XMLElement* element,
+    std::vector<Shape*>& objects, std::vector<Vertex>& vertex_data,
+    std::vector<Scaling>& scaling_transformations,
+    std::vector<Translation>& translation_transformations,
+    std::vector<Rotation>& rotation_transformations) {
+  element = element->FirstChildElement("Sphere");
+  std::stringstream stream;
+  while (element) {
+    int material_id;
+    auto child = element->FirstChildElement("Material");
+    stream << child->GetText() << std::endl;
+    stream >> material_id;
+    material_id--;
+
+    child = element->FirstChildElement("Center");
+    stream << child->GetText() << std::endl;
+    int center;
+    stream >> center;
+    const Vector3& center_of_sphere =
+        vertex_data[center - 1].get_vertex_position();
+
+    float radius;
+    child = element->FirstChildElement("Radius");
+    stream << child->GetText() << std::endl;
+    stream >> radius;
+    Matrix4x4 arbitrary_transformation(true);
+    child = element->FirstChildElement("Transformations");
+    if (child) {
+      char type;
+      int index;
+      stream.clear();
+      stream << child->GetText() << std::endl;
+      while (!(stream >> type).eof()) {
+        stream >> index;
+        index--;
+        switch (type) {
+          case 's':
+            arbitrary_transformation =
+                scaling_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+          case 't':
+            arbitrary_transformation =
+                translation_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+          case 'r':
+            arbitrary_transformation =
+                rotation_transformations[index].get_transformation_matrix() *
+                arbitrary_transformation;
+            break;
+        }
+      }
+      stream.clear();
+    }
+    stream.clear();
+    int texture_id = -1;
+    child = element->FirstChildElement("Texture");
+    if (child) {
+      stream << child->GetText() << std::endl;
+      stream >> texture_id;
+      texture_id--;
+    }
+    stream.clear();
+    objects.push_back(
+        new Sphere(scene, center_of_sphere, radius, material_id, texture_id,
+                   Arbitrary_transformation(arbitrary_transformation)));
+    element = element->NextSiblingElement("Sphere");
+  }
+  stream.clear();
+  std::cout << "Spheres are parsed" << std::endl;
 }

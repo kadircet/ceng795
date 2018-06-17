@@ -13,7 +13,6 @@ void Camera::load_cameras_from_xml(tinyxml2::XMLElement* element,
     Vector3 gaze;
     float near_distance;
     float near_l, near_r, near_b, near_t;
-    float focus_distance, aperture_size;
     int image_width, image_height;
     int number_of_samples;
     std::string image_name;
@@ -25,18 +24,6 @@ void Camera::load_cameras_from_xml(tinyxml2::XMLElement* element,
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("NearDistance");
     stream << child->GetText() << std::endl;
-    child = element->FirstChildElement("FocusDistance");
-    if (child) {
-      stream << child->GetText() << std::endl;
-    } else {
-      stream << 0 << std::endl;
-    }
-    child = element->FirstChildElement("ApertureSize");
-    if (child) {
-      stream << child->GetText() << std::endl;
-    } else {
-      stream << 0.0f << std::endl;
-    }
     child = element->FirstChildElement("ImageResolution");
     stream << child->GetText() << std::endl;
     child = element->FirstChildElement("NumSamples");
@@ -51,8 +38,6 @@ void Camera::load_cameras_from_xml(tinyxml2::XMLElement* element,
     stream >> position.x >> position.y >> position.z;
     stream >> up.x >> up.y >> up.z;
     stream >> near_distance;
-    stream >> focus_distance;
-    stream >> aperture_size;
     stream >> image_width >> image_height;
     stream >> number_of_samples;
     number_of_samples = (int)sqrt(number_of_samples);
@@ -112,10 +97,10 @@ void Camera::load_cameras_from_xml(tinyxml2::XMLElement* element,
     if (handedness && std::string(handedness) == std::string("left")) {
       left_handed = true;
     }
-    cameras.push_back(std::move(
-        Camera(up, gaze, position, number_of_samples, image_name, near_l,
-               near_r, near_b, near_t, near_distance, image_width, image_height,
-               focus_distance, aperture_size, tmo, left_handed)));
+    cameras.push_back(
+        std::move(Camera(up, gaze, position, number_of_samples, image_name,
+                         near_l, near_r, near_b, near_t, near_distance,
+                         image_width, image_height, tmo, left_handed)));
     element = element->NextSiblingElement("Camera");
   }
   stream.clear();

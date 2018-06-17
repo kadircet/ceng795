@@ -6,6 +6,8 @@
 #include "Shape.h"
 #include "Transformation.h"
 #include "Vector3.h"
+#include "Vertex.h"
+#include "tinyxml2.h"
 class Ray;
 class Scene;
 
@@ -33,6 +35,12 @@ class Sphere : public Shape {
     std::cout << "Sphere: " << center << "," << radius
               << " material: " << material_id << std::endl;
   }
+  static void load_spheres_from_xml(
+      const Scene* scene, tinyxml2::XMLElement* element,
+      std::vector<Shape*>& objects, std::vector<Vertex>& vertex_data,
+      std::vector<Scaling>& scaling_transformations,
+      std::vector<Translation>& translation_transformations,
+      std::vector<Rotation>& rotation_transformations);
 
  protected:
   Transformation transformation_;

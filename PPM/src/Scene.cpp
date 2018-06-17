@@ -4,6 +4,9 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include "Bounding_volume_hierarchy.h"
+#include "Mesh.h"
+#include "Sphere.h"
 #include "tinyxml2.h"
 //#define GAUSSIAN_FILTER
 Scene::Scene(const std::string& file_name) {
@@ -26,6 +29,7 @@ Scene::Scene(const std::string& file_name) {
     stream << "0.001" << std::endl;
   }
   stream >> shadow_ray_epsilon;
+  std::cout << "ShadowRayEpsilon is parsed" << std::endl;
   //
 
   // Get MaxRecursionDepth
@@ -36,6 +40,7 @@ Scene::Scene(const std::string& file_name) {
     stream << "0" << std::endl;
   }
   stream >> max_recursion_depth;
+  std::cout << "MaxRecursionDepth is parsed" << std::endl;
   //
 
   // Get Cameras
@@ -62,6 +67,47 @@ Scene::Scene(const std::string& file_name) {
     Rotation::load_rotation_transformations_from_xml(element,
                                                      rotation_transformations);
   }
+  // Transformations End
+
+  // Get VertexData
+  element = root->FirstChildElement("VertexData");
+  if (element) {
+    const char* binary_file = element->Attribute("binaryFile");
+    if (binary_file) {
+      // parse_binary_vertexdata(std::string(binary_file));
+    } else {
+      stream << element->GetText() << std::endl;
+      Vector3 vertex;
+      while (!(stream >> vertex.x).eof()) {
+        stream >> vertex.y >> vertex.z;
+        vertex_data.push_back(Vertex(vertex));
+      }
+    }
+  }
+  stream.clear();
+  std::cout << "VertexData is parsed" << std::endl;
+  // VertexData End
+
+  // Get Objects
+  std::vector<Shape*> objects;
+  element = root->FirstChildElement("Objects");
+  if (element) {
+    Sphere::load_spheres_from_xml(
+        this, element, objects, vertex_data, scaling_transformations,
+        translation_transformations, rotation_transformations);
+    Mesh::load_meshes_from_xml(
+        this, element, meshes, vertex_data, scaling_transformations,
+        translation_transformations, rotation_transformations);
+    Mesh_instance::create_mesh_instances_for_meshes(meshes, objects, materials);
+    Mesh_instance::load_mesh_instances_from_xml(
+        element, meshes, objects, materials, scaling_transformations,
+        translation_transformations, rotation_transformations);
+  }
+  for (Vertex& vertex : vertex_data) {
+    vertex.finalize_normal();
+  }
+  bvh = BVH::create_bvh(objects);
+
   //
 }
 

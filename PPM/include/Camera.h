@@ -29,11 +29,9 @@ class Camera {
   Camera(const Vector3& up, const Vector3& gaze, const Vector3& position,
          int number_of_samples, const std::string& filename, float left,
          float right, float bottom, float top, float distance, int image_width,
-         int image_height, float focus_distance, float aperture_size,
-         Tonemapping_operator* tmo, bool left_handed)
+         int image_height, Tonemapping_operator* tmo, bool left_handed)
       : e(position),
         number_of_samples_(number_of_samples),
-        aperture_size_(aperture_size),
         filename_(filename),
         image_plane_(left, right, bottom, top, distance, image_width,
                      image_height),
@@ -47,12 +45,6 @@ class Camera {
       v = w.cross(u).normalize();
     }
 
-    if (aperture_size_ != 0.0f) {
-      float ratio = focus_distance / distance;
-      image_plane_ =
-          Image_plane(ratio * left, ratio * right, ratio * bottom, ratio * top,
-                      focus_distance, image_width, image_height);
-    }
     top_left_corner = e - w * image_plane_.distance + image_plane_.left * u +
                       image_plane_.top * v;
     s_u_constant =
@@ -69,7 +61,6 @@ class Camera {
         s_v_constant(rhs.s_v_constant),
         top_left_corner(rhs.top_left_corner),
         number_of_samples_(rhs.number_of_samples_),
-        aperture_size_(rhs.aperture_size_),
         filename_(rhs.filename_),
         image_plane_(rhs.image_plane_),
         tmo_(rhs.tmo_) {
@@ -89,22 +80,10 @@ class Camera {
     // ray.bg_v = y / image_plane_.height;
     return ray;
   }
-  Ray calculate_ray_at(float x, float y, float x_offset_ratio,
-                       float y_offset_ratio, float time = 0.0f) const {
-    // For now, origin is top_left, right handed camera
-    Vector3 new_e =
-        e + (u * x_offset_ratio + v * y_offset_ratio) * aperture_size_ * 0.5f;
-    const Vector3 s = top_left_corner + x * s_u_constant - y * s_v_constant;
-    Ray ray(new_e, (s - new_e).normalize(), r_primary);
-    // ray.bg_u = x / image_plane_.width;
-    // ray.bg_v = y / image_plane_.height;
-    return ray;
-  }
 
   const Image_plane& get_image_plane() const { return image_plane_; }
   const std::string& get_filename() const { return filename_; }
   int get_number_of_samples() const { return number_of_samples_; }
-  float get_aperture_size() const { return aperture_size_; }
   const Tonemapping_operator* get_tmo() const { return tmo_; }
 
  private:
@@ -119,7 +98,6 @@ class Camera {
   Vector3 top_left_corner;
 
   int number_of_samples_;
-  float aperture_size_;
   const std::string filename_;
   Image_plane image_plane_;
   Tonemapping_operator* tmo_;
