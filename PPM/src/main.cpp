@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
+#include "Pixel.h"
 #include "Scene.h"
 #include "Vector3.h"
 #include "lodepng.h"
@@ -22,7 +23,52 @@ int main(int argc, char* argv[]) {
   std::cout << "Scene is parsed" << std::endl;
   const int thread_count =
       std::thread::hardware_concurrency() * THREAD_MULTIPLIER;
+  for (int index = 0; index < scene.cameras.size(); index++) {
+    const Camera& camera = scene.cameras[index];
+    scene.reset_hash_grid();
+    const Image_plane& image_plane = camera.get_image_plane();
+    const int width = image_plane.width;
+    const int height = image_plane.height;
+    Pixel* pixels = new Pixel[width * height];
+    int size = width * height;
+    auto start = std::chrono::system_clock::now();
+    if (thread_count == 0 || height < thread_count) {
+      std::cout << "Starting eye_trace on #1 thread" << std::endl;
+      scene.eye_trace_lines(index, 0, 1);
+    } else {
+      std::cout << "Starting eye_trace on #" << thread_count << " thread(s)"
+                << std::endl;
+      std::thread* threads = new std::thread[thread_count];
+      for (int i = 0; i < thread_count; i++) {
+        threads[i] = std::thread(&Scene::eye_trace_lines, &scene, index, i,
+                                 thread_count);
+      }
+      for (int i = 0; i < thread_count; i++) threads[i].join();
+      delete[] threads;
+    }
+    auto end = std::chrono::system_clock::now();
+    std::cout << "Eye pass is completed in: ";
+    print_time_diff(std::cout, start, end);
+    std::cout << std::endl;
 
+    start = std::chrono::system_clock::now();
+    scene.build_hash_grid(width, height);
+    end = std::chrono::system_clock::now();
+    std::cout << "Building hash grid is completed in: ";
+    print_time_diff(std::cout, start, end);
+    std::cout << std::endl;
+
+    start = std::chrono::system_clock::now();
+    // generate photon is implemented by lights
+    // photon trace is implemented by scene, it is used for photon, thread
+    // safe(I guess)
+
+    end = std::chrono::system_clock::now();
+    std::cout << "Tracing photon rays is completed in: ";
+    print_time_diff(std::cout, start, end);
+    std::cout << std::endl;
+  }
+  return 0;
   /*const int camera_count = (int)scene.cameras.size();
   for (int index = 0; index < camera_count; index++) {
     const Camera& camera = scene.cameras[index];
@@ -39,8 +85,8 @@ int main(int argc, char* argv[]) {
                 << std::endl;
       std::thread* threads = new std::thread[thread_count];
       for (int i = 0; i < thread_count; i++) {
-        threads[i] = std::thread(&Scene::render_image, &scene, index, pixels, i,
-                                 thread_count);
+        threads[i] = std::thread(&Scene::render_image, &scene, index, pixels,
+  i, thread_count);
       }
       for (int i = 0; i < thread_count; i++) threads[i].join();
       delete[] threads;
@@ -71,22 +117,12 @@ int main(int argc, char* argv[]) {
             float r =
                 clamp(
                     0.0f, 1.0f,
-                    (1.055f * std::pow(clamp(0.0f, 1.0f, old_rgb.x), inverse) -
-                     0.055f)) *
-                255.0f;
-            float g =
-                clamp(
-                    0.0f, 1.0f,
-                    (1.055f * std::pow(clamp(0.0f, 1.0f, old_rgb.y), inverse) -
-                     0.055f)) *
-                255.0f;
-            float b =
-                clamp(
-                    0.0f, 1.0f,
-                    (1.055f * std::pow(clamp(0.0f, 1.0f, old_rgb.z), inverse) -
-                     0.055f)) *
-                255.0f;
-            tonemapped_colors[j * width + i] = Vector3(r, g, b);
+                    (1.055f * std::pow(clamp(0.0f, 1.0f, old_rgb.x), inverse)
+  - 0.055f)) * 255.0f; float g = clamp( 0.0f, 1.0f, (1.055f *
+  std::pow(clamp(0.0f, 1.0f, old_rgb.y), inverse) - 0.055f)) * 255.0f; float b
+  = clamp( 0.0f, 1.0f, (1.055f * std::pow(clamp(0.0f, 1.0f, old_rgb.z),
+  inverse) - 0.055f)) * 255.0f; tonemapped_colors[j * width + i] = Vector3(r,
+  g, b);
           }
         }
       }
@@ -95,11 +131,9 @@ int main(int argc, char* argv[]) {
       write_png(pixel_colors, filename, width, height);
     }
 
-    std::cout << filename << "(" << width << "x" << height << ") is saved in: ";
-    print_time_diff(std::cout, start, end);
-    std::cout << std::endl;
+    std::cout << filename << "(" << width << "x" << height << ") is saved in:
+  "; print_time_diff(std::cout, start, end); std::cout << std::endl;
   }*/
-  return 0;
 }
 
 void write_png(const std::vector<Vector3>& pixel_colors,

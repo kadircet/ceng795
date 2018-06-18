@@ -7,7 +7,7 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-constexpr const float intersection_test_epsilon = 0.000001f;
+constexpr const float intersection_test_epsilon = 0.0001f;
 constexpr const float kInf = std::numeric_limits<float>::infinity();
 class Vector3 {
  public:

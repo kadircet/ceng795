@@ -16,6 +16,19 @@ void Bounding_box::expand(const Bounding_box& bounding_box) {
   center = (max_corner + min_corner) / 2.;
 }
 
+void Bounding_box::fit(const Vector3& point) {
+  min_corner.x = std::min(min_corner.x, point.x);
+  min_corner.y = std::min(min_corner.y, point.y);
+  min_corner.z = std::min(min_corner.z, point.z);
+
+  max_corner.x = std::max(max_corner.x, point.x);
+  max_corner.y = std::max(max_corner.y, point.y);
+  max_corner.z = std::max(max_corner.z, point.z);
+
+  delta = max_corner - min_corner;
+  center = (max_corner + min_corner) / 2.;
+}
+
 float Bounding_box::intersect(const Ray& ray) const {
   float tmin = -kInf;
   float tmax = kInf;

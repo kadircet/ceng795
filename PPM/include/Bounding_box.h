@@ -15,6 +15,7 @@ class Bounding_box {
         delta(max - min),
         center((max + min) / 2) {}
   void expand(const Bounding_box& bounding_box);
+  void fit(const Vector3& point);
   float intersect(const Ray& ray) const;
   Vector3 min_corner;
   Vector3 max_corner;
