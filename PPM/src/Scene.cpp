@@ -72,10 +72,6 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
   Vector3 nl = normal.dot(ray.d) < 0 ? normal : normal * -1;
   const Material& material = materials[shape->get_material_id()];
   if (material.material_type == mt_diffuse) {
-    const Vector3& base_color = material.diffuse;
-    float p = base_color.x > base_color.y && base_color.x > base_color.z
-                  ? base_color.x
-                  : base_color.y > base_color.z ? base_color.y : base_color.z;
     // Use Quasi-Monte Carlo to sample the next direction
     float r1 = 2. * M_PI * Light::hal(depth3 - 1, photon_id);
     float r2 = Light::hal(depth3 + 0, photon_id);
@@ -103,19 +99,21 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
           hit_point->n++;
           Vector3 color(0.0f);
           Vector3 w_i = -ray.d.normalize();
-          if (material.brdf_id == -1) {
-            float cos_theta_i = normal.dot(w_i);
+          if (hit_point->material.brdf_id == -1) {
+            // all things except w_i should be used from hit_point
+            float cos_theta_i = hit_point->normal.dot(w_i);
             if (cos_theta_i > 1.0f || cos_theta_i <= 0.0f) {
               color = 0.0f;
             } else {
               float specular_cos_theta = std::max(
-                  0.0f, normal.dot((hit_point->w_o + w_i).normalize()));
-              color =
-                  (material.diffuse +
-                   material.specular *
-                       std::pow(specular_cos_theta, material.phong_exponent) /
-                       cos_theta_i) *
-                  hit_point->attenuation;
+                  0.0f,
+                  hit_point->normal.dot((hit_point->w_o + w_i).normalize()));
+              color = (hit_point->material.diffuse +
+                       hit_point->material.specular *
+                           std::pow(specular_cos_theta,
+                                    hit_point->material.phong_exponent) /
+                           cos_theta_i) *
+                      hit_point->attenuation;
             }
 
           } else {
@@ -127,23 +125,45 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
         hit_point->mutex.unlock();
       }
     }
-    if (depth < max_recursion_depth && Light::hal(depth3 + 1, photon_id) < p) {
-      Vector3 w = nl;
-      Vector3 u = ((std::fabs(w.x) > 0.1f) ? Vector3(0.0f, 1.0f, 0.0f)
-                                           : Vector3(1.0f, 0.0f, 0.0f))
-                      .cross(w)
+    Vector3 w = nl;
+    Vector3 u = ((std::fabs(w.x) > 0.1f) ? Vector3(0.0f, 1.0f, 0.0f)
+                                         : Vector3(1.0f, 0.0f, 0.0f))
+                    .cross(w)
 
-                      .normalize();
-      Vector3 v = w.cross(u);
-      Vector3 d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s +
-                   w * std::sqrt(1.0f - r2))
-                      .normalize();
+                    .normalize();
+    Vector3 v = w.cross(u);
+    Vector3 d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s +
+                 w * std::sqrt(1.0f - r2))
+                    .normalize();
+    Vector3 base_color(0.0f);
+    Vector3 w_i = -ray.d.normalize();
+    const Vector3& w_o = d;
+
+    if (material.brdf_id == -1) {
+      float cos_theta_i = nl.dot(w_i);
+      if (cos_theta_i > 1.0f || cos_theta_i <= 0.0f) {
+        base_color = 0.0f;
+      } else {
+        float specular_cos_theta =
+            std::max(0.0f, nl.dot((w_o + w_i).normalize()));
+        base_color = (material.diffuse + material.specular *
+                                             std::pow(specular_cos_theta,
+                                                      material.phong_exponent) /
+                                             cos_theta_i) *
+                     attenuation;
+      }
+    } else {
+      // parse brdfs, use brdfs with intersection's diffuse, specular
+    }
+    float p = base_color.x > base_color.y && base_color.x > base_color.z
+                  ? base_color.x
+                  : base_color.y > base_color.z ? base_color.y : base_color.z;
+    // Be sure that hal cannot return negative
+    if (depth < max_recursion_depth && Light::hal(depth3 + 1, photon_id) < p) {
       // Ray_type is not important for ppm, not checking it
-      // I don't know what should new flux be? TODO
       photon_trace(
           Ray(intersection_point + (d * shadow_ray_epsilon), d, r_reflection),
-          depth + 1, material.diffuse * (flux) * (1.0f / p), attenuation,
-          photon_id);
+          depth + 1, base_color * (flux) * (1.0f / p), attenuation, photon_id);
     }
   } else if (depth >= max_recursion_depth) {
     return;
@@ -192,9 +212,11 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
         refraction_direction, r_refraction);
     Vector3 attenuated_color = material.transparency * attenuation;
     if (Light::hal(depth3 - 1, photon_id) < P) {
-      photon_trace(reflection_ray, depth + 1, flux, attenuation, photon_id);
+      photon_trace(reflection_ray, depth + 1, flux, attenuated_color,
+                   photon_id);
     } else {
-      photon_trace(refraction_ray, depth + 1, flux, attenuation, photon_id);
+      photon_trace(refraction_ray, depth + 1, flux, attenuated_color,
+                   photon_id);
     }
   }
 }
