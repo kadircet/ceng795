@@ -75,7 +75,7 @@ class Camera {
   Ray calculate_ray_at(float x, float y, float time = 0.0f) const {
     // For now, origin is top_left, right handed camera
     const Vector3 s = top_left_corner + x * s_u_constant - y * s_v_constant;
-    Ray ray(e, (s - e).normalize(), r_primary);
+    Ray ray(e, (s - e).normalize());
     // ray.bg_u = x / image_plane_.width;
     // ray.bg_v = y / image_plane_.height;
     return ray;

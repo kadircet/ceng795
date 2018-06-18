@@ -59,13 +59,26 @@ void Scene::build_hash_grid(const int width, const int height) {
     }
   }
 }
+
+void Scene::trace_n_photons(int base_photon_id, int n) {
+  // For now, only one light source
+  const Light* light = lights[0];
+  Ray photon_ray(0.0f, 0.0f);
+  Vector3 flux;
+  for (int i = 0; i < n; i++) {
+    light->generate_photon(photon_ray, flux, base_photon_id + i);
+    photon_trace(photon_ray, 0, flux, 1.0f, base_photon_id + i);
+  }
+}
 void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
                          const Vector3& attenuation, int photon_id) {
   Intersection intersection;
-  if (!bvh->intersect(ray, intersection, true)) {
+  depth++;
+  int depth3 = depth * 3;
+  if ((depth >= max_recursion_depth) ||
+      !bvh->intersect(ray, intersection, true)) {
     return;
   }
-  int depth3 = (depth + 1) * 3;
   const Shape* shape = intersection.shape;
   Vector3 intersection_point = ray.point_at(intersection.t);
   const Vector3& normal = intersection.normal;
@@ -161,18 +174,14 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
     // Be sure that hal cannot return negative
     if (depth < max_recursion_depth && Light::hal(depth3 + 1, photon_id) < p) {
       // Ray_type is not important for ppm, not checking it
-      photon_trace(
-          Ray(intersection_point + (d * shadow_ray_epsilon), d, r_reflection),
-          depth + 1, base_color * (flux) * (1.0f / p), attenuation, photon_id);
+      photon_trace(Ray(intersection_point + (d * shadow_ray_epsilon), d), depth,
+                   base_color * (flux) * (1.0f / p), attenuation, photon_id);
     }
-  } else if (depth >= max_recursion_depth) {
-    return;
   } else if (material.material_type == mt_mirror) {
     const Vector3 w_o = (ray.o - intersection_point).normalize();
     const Vector3 w_r = ((2.0f * normal.dot(w_o) * normal) - w_o).normalize();
-    Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
-                   r_reflection);
-    photon_trace(mirror_ray, depth + 1, material.mirror * flux,
+    Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
+    photon_trace(mirror_ray, depth, material.mirror * flux,
                  material.mirror * attenuation, photon_id);
 
   } else if (material.material_type == mt_refractive) {
@@ -183,8 +192,7 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
     const Vector3 nl = normal.dot(ray.d) < 0.0f ? normal : normal * -1;
     const Vector3 w_o = (ray.o - intersection_point).normalize();
     const Vector3 w_r = ((2.0f * normal.dot(w_o) * normal) - w_o).normalize();
-    Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
-                       r_reflection);
+    Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
     bool into = (normal.dot(nl) > 0.0f);
     constexpr float air_index = 1.0f;
     float nnt = into ? air_index / material.refraction_index
@@ -192,7 +200,7 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
     float ddn = ray.d.dot(nl);
     float cos2t = 1 - nnt * nnt * (1 - ddn * ddn);
     if (cos2t < 0.0f) {
-      photon_trace(reflection_ray, depth + 1, flux, attenuation, photon_id);
+      photon_trace(reflection_ray, depth, flux, attenuation, photon_id);
       return;
     }
     Vector3 refraction_direction =
@@ -209,14 +217,12 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
     float P = fresnel;
     Ray refraction_ray(
         intersection_point + (refraction_direction * shadow_ray_epsilon),
-        refraction_direction, r_refraction);
+        refraction_direction);
     Vector3 attenuated_color = material.transparency * attenuation;
     if (Light::hal(depth3 - 1, photon_id) < P) {
-      photon_trace(reflection_ray, depth + 1, flux, attenuated_color,
-                   photon_id);
+      photon_trace(reflection_ray, depth, flux, attenuated_color, photon_id);
     } else {
-      photon_trace(refraction_ray, depth + 1, flux, attenuated_color,
-                   photon_id);
+      photon_trace(refraction_ray, depth, flux, attenuated_color, photon_id);
     }
   }
 }
@@ -281,8 +287,7 @@ void Scene::eye_trace(const Ray& ray, int depth, const Vector3& attenuation,
   } else if (material.material_type == mt_mirror) {
     const Vector3 w_o = (ray.o - intersection_point).normalize();
     const Vector3 w_r = ((2.0f * normal.dot(w_o) * normal) - w_o).normalize();
-    Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
-                   r_reflection);
+    Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
     eye_trace(mirror_ray, depth + 1, material.mirror * attenuation, pixel_index,
               pixel_weight);
   } else if (material.material_type == mt_refractive) {
@@ -293,8 +298,7 @@ void Scene::eye_trace(const Ray& ray, int depth, const Vector3& attenuation,
     const Vector3 nl = normal.dot(ray.d) < 0.0f ? normal : normal * -1;
     const Vector3 w_o = (ray.o - intersection_point).normalize();
     const Vector3 w_r = ((2.0f * normal.dot(w_o) * normal) - w_o).normalize();
-    Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r,
-                       r_reflection);
+    Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
     bool into = (normal.dot(nl) > 0.0f);
     constexpr float air_index = 1.0f;
     float nnt = into ? air_index / material.refraction_index
@@ -319,7 +323,7 @@ void Scene::eye_trace(const Ray& ray, int depth, const Vector3& attenuation,
     float fresnel = R0 + (1 - R0) * c * c * c * c * c;
     Ray refraction_ray(
         intersection_point + (refraction_direction * shadow_ray_epsilon),
-        refraction_direction, r_refraction);
+        refraction_direction);
     Vector3 attenuated_color = material.transparency * attenuation;
     eye_trace(reflection_ray, depth + 1, attenuated_color * fresnel,
               pixel_index, pixel_weight);
@@ -327,6 +331,17 @@ void Scene::eye_trace(const Ray& ray, int depth, const Vector3& attenuation,
               pixel_index, pixel_weight);
   }
 }
+void Scene::density_estimation(Pixel* pixels, int total_num_of_photons) {
+  for (int i = 0; i < hit_points.size(); i++) {
+    const Hit_point* hit_point = hit_points[i];
+    int pixel_index = hit_point->pixel;
+    pixels[pixel_index].add_color(
+        hit_point->flux *
+            (1.0f / (M_PI * hit_point->radius_squared * total_num_of_photons)),
+        hit_point->pixel_weight);
+  }
+}
+
 Scene::Scene(const std::string& file_name) {
   tinyxml2::XMLDocument file;
   std::stringstream stream;
@@ -350,14 +365,40 @@ Scene::Scene(const std::string& file_name) {
   std::cout << "ShadowRayEpsilon is parsed" << std::endl;
   //
 
+  // Get PhotonCountPerIteration
+  element = root->FirstChildElement("PhotonCountPerIteration");
+  if (element) {
+    stream << element->GetText() << std::endl;
+  } else {
+    stream << "8000" << std::endl;
+  }
+  stream >> photon_count_per_iteration;
+  std::cout << "PhotonCountPerIteration is parsed" << std::endl;
+  //
+
+  // Get NumberOfIterations
+  element = root->FirstChildElement("NumberOfIterations");
+  if (element) {
+    stream << element->GetText() << std::endl;
+  } else {
+    stream << "1000" << std::endl;
+  }
+  stream >> number_of_iterations;
+  std::cout << "NumberOfIterations is parsed" << std::endl;
+  //
+
   // Get MaxRecursionDepth
   element = root->FirstChildElement("MaxRecursionDepth");
   if (element) {
     stream << element->GetText() << std::endl;
   } else {
-    stream << "0" << std::endl;
+    stream << "20" << std::endl;
   }
   stream >> max_recursion_depth;
+  if (max_recursion_depth > 20) {
+    max_recursion_depth = 20;
+    std::cout << "MaxRecursionDepth cannot be greater than 20" << std::endl;
+  }
   std::cout << "MaxRecursionDepth is parsed" << std::endl;
   //
 

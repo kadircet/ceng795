@@ -21,18 +21,19 @@ int main(int argc, char* argv[]) {
   system("pause");
   Scene scene(argv[1]);
   std::cout << "Scene is parsed" << std::endl;
-  const int thread_count =
-      std::thread::hardware_concurrency() * THREAD_MULTIPLIER;
+  int thread_count = std::thread::hardware_concurrency() * THREAD_MULTIPLIER;
+  if (thread_count == 0) {
+    thread_count = 1;
+  }
   for (int index = 0; index < scene.cameras.size(); index++) {
     const Camera& camera = scene.cameras[index];
     scene.reset_hash_grid();
     const Image_plane& image_plane = camera.get_image_plane();
     const int width = image_plane.width;
     const int height = image_plane.height;
-    Pixel* pixels = new Pixel[width * height];
     int size = width * height;
     auto start = std::chrono::system_clock::now();
-    if (thread_count == 0 || height < thread_count) {
+    if (height < thread_count) {
       std::cout << "Starting eye_trace on #1 thread" << std::endl;
       scene.eye_trace_lines(index, 0, 1);
     } else {
@@ -63,10 +64,92 @@ int main(int argc, char* argv[]) {
     // photon trace is implemented by scene, it is used for photon, thread
     // safe(I guess)
 
+    int number_of_iterations = scene.number_of_iterations;
+    int photon_count_per_iteration = scene.photon_count_per_iteration;
+    int photons_per_thread = photon_count_per_iteration / thread_count;
+    if (height < thread_count) {
+      std::cout << "Starting photon_trace on #1 thread" << std::endl;
+      for (int i = 0; i < number_of_iterations; i++) {
+        int base_id = i * photon_count_per_iteration;
+        scene.trace_n_photons(base_id, photon_count_per_iteration);
+      }
+    } else {
+      std::cout << "Starting photon_trace on #" << thread_count << " thread(s)"
+                << std::endl;
+      for (int i = 0; i < number_of_iterations; i++) {
+        int base_id = i * photon_count_per_iteration;
+        std::thread* threads = new std::thread[thread_count];
+        for (int i = 0; i < thread_count; i++) {
+          threads[i] = std::thread(&Scene::trace_n_photons, &scene, base_id,
+                                   photons_per_thread);
+          base_id += photons_per_thread;
+        }
+        for (int i = 0; i < thread_count; i++) threads[i].join();
+        delete[] threads;
+      }
+    }
     end = std::chrono::system_clock::now();
     std::cout << "Tracing photon rays is completed in: ";
     print_time_diff(std::cout, start, end);
     std::cout << std::endl;
+
+    Pixel* pixels = new Pixel[width * height];
+    start = std::chrono::system_clock::now();
+    scene.density_estimation(
+        pixels, photon_count_per_iteration * photons_per_thread * thread_count);
+    end = std::chrono::system_clock::now();
+    std::cout << "Density estimation is completed in: ";
+    print_time_diff(std::cout, start, end);
+    std::cout << std::endl;
+
+    std::vector<Vector3> pixel_colors;
+    for (int j = 0; j < height; j++) {
+      for (int i = 0; i < width; i++) {
+        pixel_colors.push_back(pixels[j * width + i].get_color());
+      }
+    }
+    delete[] pixels;
+
+    std::string filename = camera.get_filename().substr(
+        0, camera.get_filename().find_last_of("."));
+
+    const Tonemapping_operator* tmo = camera.get_tmo();
+    if (tmo) {
+      write_exr(pixel_colors, filename, width, height);
+      std::vector<Vector3> tonemapped_colors;
+      tmo->apply_tmo(pixel_colors, tonemapped_colors);
+      // TODO: parse gammacorrection style
+      if (true) {
+        constexpr float inverse = 1.0f / 2.4f;
+        for (int j = 0; j < height; j++) {
+          for (int i = 0; i < width; i++) {
+            Vector3 old_rgb = tonemapped_colors[j * width + i];
+            float r =
+                clamp(
+                    0.0f, 1.0f,
+                    (1.055f * std::pow(clamp(0.0f, 1.0f, old_rgb.x), inverse) -
+                     0.055f)) *
+                255.0f;
+            float g =
+                clamp(
+                    0.0f, 1.0f,
+                    (1.055f * std::pow(clamp(0.0f, 1.0f, old_rgb.y), inverse) -
+                     0.055f)) *
+                255.0f;
+            float b =
+                clamp(
+                    0.0f, 1.0f,
+                    (1.055f * std::pow(clamp(0.0f, 1.0f, old_rgb.z), inverse) -
+                     0.055f)) *
+                255.0f;
+            tonemapped_colors[j * width + i] = Vector3(r, g, b);
+          }
+        }
+      }
+      write_png(tonemapped_colors, filename, width, height);
+    } else {
+      write_png(pixel_colors, filename, width, height);
+    }
   }
   return 0;
   /*const int camera_count = (int)scene.cameras.size();

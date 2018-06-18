@@ -43,7 +43,6 @@ void Camera::load_cameras_from_xml(tinyxml2::XMLElement* element,
     number_of_samples = (int)sqrt(number_of_samples);
     if (number_of_samples <= 0) number_of_samples = 1;
     stream >> image_name;
-
     const char* camera_type = element->Attribute("type");
     if (camera_type && std::string(camera_type) == std::string("simple")) {
       child = element->FirstChildElement("Gaze");

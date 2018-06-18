@@ -9,7 +9,8 @@ class Ray {
   Vector3 d;
   bool in_medium;
   Ray_type ray_type;
-  Ray(const Vector3& origin, const Vector3& direction, Ray_type ray_type)
+  Ray(const Vector3& origin, const Vector3& direction,
+      Ray_type ray_type = r_primary)
       : o(origin), d(direction), in_medium(false), ray_type(ray_type) {}
   inline Vector3 point_at(float t) const { return o + (t * d); }
 };
