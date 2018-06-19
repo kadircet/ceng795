@@ -1,15 +1,31 @@
 #include "Point_light.h"
+#include <random>
 #include <sstream>
 Point_light::Point_light(const Vector3& position, const Vector3& intensity)
     : position_(position), intensity_(intensity) {}
 
-void Point_light::generate_photon(Ray& photon_ray, Vector3& flux,
-                                  int photon_id) const {
+void Point_light::generate_photon(Ray& photon_ray, Vector3& flux) const {
   flux = intensity_ * (M_PI * 4.0f);
-  float p = 2.0f * M_PI * hal(0, photon_id);
-  float t = 2.0f * std::acos(clamp(0.0f, 1.0f, sqrt(1.0 - hal(1, photon_id))));
-  float sint = sin(t);
-  photon_ray.d = Vector3(std::cos(p) * sint, std::cos(t), std::sin(p) * sint);
+  // Sample sphere
+  thread_local static std::random_device rd;
+  thread_local static std::mt19937 generator(rd());
+  std::uniform_real_distribution<float> uniform_dist(0.0f, 1.0f);
+  float epsilon_1 = uniform_dist(generator);
+  float epsilon_2 = uniform_dist(generator);
+
+  float phi;
+  float theta;
+  Vector3 w(0.0f, 1.0f, 0.0f);
+  const Vector3 u = ((w.x != 0.0f || w.y != 0.0f) ? Vector3(-w.y, w.x, 0.0f)
+                                                  : Vector3(0.0f, 1.0f, 0.0f))
+                        .normalize();
+  const Vector3 v = w.cross(u);
+  phi = 2 * M_PI * epsilon_1;
+  theta = 2 * M_PI * epsilon_2;
+
+  photon_ray.d = (w * std::cos(theta) + v * std::sin(theta) * std::cos(phi) +
+                  u * std::sin(theta) * std::sin(phi))
+                     .normalize();
   photon_ray.o = position_;
 }
 

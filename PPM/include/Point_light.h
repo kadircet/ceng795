@@ -12,8 +12,7 @@ class Point_light : public Light {
                                  float& probability) const override;
   Vector3 incoming_radiance(const Vector3& from_point_to_light,
                             float probability) const override;*/
-  virtual void generate_photon(Ray& photon_ray, Vector3& flux,
-                               int photon_id) const override;
+  virtual void generate_photon(Ray& photon_ray, Vector3& flux) const override;
   static void load_point_lights_from_xml(tinyxml2::XMLElement* element,
                                          std::vector<Light*>& lights);
 

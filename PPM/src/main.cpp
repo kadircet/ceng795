@@ -74,24 +74,18 @@ int main(int argc, char* argv[]) {
     int photons_per_thread = photon_count_per_iteration / thread_count;
     if (height < thread_count) {
       std::cout << "Starting photon_trace on #1 thread" << std::endl;
-      for (int i = 0; i < number_of_iterations; i++) {
-        int base_id = i * photon_count_per_iteration;
-        scene.trace_n_photons(base_id, photon_count_per_iteration);
-      }
+      scene.trace_n_photons(photon_count_per_iteration, number_of_iterations);
+
     } else {
       std::cout << "Starting photon_trace on #" << thread_count << " thread(s)"
                 << std::endl;
-      for (int i = 0; i < number_of_iterations; i++) {
-        int base_id = i * photon_count_per_iteration;
-        std::thread* threads = new std::thread[thread_count];
-        for (int i = 0; i < thread_count; i++) {
-          threads[i] = std::thread(&Scene::trace_n_photons, &scene, base_id,
-                                   photons_per_thread);
-          base_id += photons_per_thread;
-        }
-        for (int i = 0; i < thread_count; i++) threads[i].join();
-        delete[] threads;
+      std::thread* threads = new std::thread[thread_count];
+      for (int i = 0; i < thread_count; i++) {
+        threads[i] = std::thread(&Scene::trace_n_photons, &scene,
+                                 photons_per_thread, number_of_iterations);
       }
+      for (int i = 0; i < thread_count; i++) threads[i].join();
+      delete[] threads;
     }
     end = std::chrono::system_clock::now();
     std::cout << "Tracing photon rays is completed in: ";

@@ -11,6 +11,38 @@
 #include "tinyxml2.h"
 //#define GAUSSIAN_FILTER
 #define ALPHA 0.7f
+
+void Scene::sample_hemisphere(const Vector3& w, Vector3& d, float& p,
+                              bool is_uniform_sampling) {
+  thread_local static std::random_device rd;
+  thread_local static std::mt19937 generator(rd());
+  std::uniform_real_distribution<float> uniform_dist(0.0f, 1.0f);
+  float epsilon_1 = uniform_dist(generator);
+  float epsilon_2 = uniform_dist(generator);
+
+  float phi;
+  float theta;
+  const Vector3 u = ((w.x != 0.0f || w.y != 0.0f) ? Vector3(-w.y, w.x, 0.0f)
+                                                  : Vector3(0.0f, 1.0f, 0.0f))
+                        .normalize();
+  const Vector3 v = w.cross(u);
+  if (is_uniform_sampling) {
+    phi = 2 * M_PI * epsilon_1;
+    theta = std::acos(epsilon_2);
+  } else {
+    phi = 2 * M_PI * epsilon_1;
+    theta = std::asin(std::sqrt(epsilon_2));
+  }
+  d = (w * std::cos(theta) + v * std::sin(theta) * std::cos(phi) +
+       u * std::sin(theta) * std::sin(phi))
+          .normalize();
+  if (is_uniform_sampling) {
+    p = 1.0f / (2 * M_PI);
+  } else {
+    p = std::max(0.0f, w.dot(d)) / M_PI;
+  }
+}
+
 void Scene::reset_hash_grid() {
   hash_grid.clear();
   for (int i = 0; i < hit_points.size(); i++) {
@@ -60,21 +92,24 @@ void Scene::build_hash_grid(const int width, const int height) {
   }
 }
 
-void Scene::trace_n_photons(int base_photon_id, int n) {
+void Scene::trace_n_photons(int n, int iteration_count) {
   // For now, only one light source
   const Light* light = lights[0];
   Ray photon_ray(0.0f, 0.0f);
   Vector3 flux;
-  for (int i = 0; i < n; i++) {
-    light->generate_photon(photon_ray, flux, base_photon_id + i);
-    photon_trace(photon_ray, 0, flux, 1.0f, base_photon_id + i);
+  for (int i = 0; i < n * iteration_count; i++) {
+    light->generate_photon(photon_ray, flux);
+    photon_trace(photon_ray, 0, flux);
   }
 }
-void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
-                         const Vector3& attenuation, int photon_id) {
+
+void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux) {
+  thread_local static std::random_device rd;
+  thread_local static std::mt19937 generator(rd());
+  std::uniform_real_distribution<float> uniform_dist(0.0f, 1.0f);
   Intersection intersection;
   depth++;
-  int depth3 = depth * 3;
+
   if ((depth >= max_recursion_depth) ||
       !bvh->intersect(ray, intersection, true)) {
     return;
@@ -86,9 +121,6 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
   const Material& material = materials[shape->get_material_id()];
   if (material.material_type == mt_diffuse) {
     // Use Quasi-Monte Carlo to sample the next direction
-    float r1 = 2. * M_PI * Light::hal(depth3 - 1, photon_id);
-    float r2 = Light::hal(depth3 + 0, photon_id);
-    float r2s = std::sqrt(r2);
 
     Vector3 hh = (intersection_point - hit_point_bbox.min_corner) * hash_scale;
     int ix = abs(int(hh.x));
@@ -115,9 +147,6 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
           if (hit_point->material.brdf_id == -1) {
             // all things except w_i should be used from hit_point
             float cos_theta_i = hit_point->normal.dot(w_i);
-            if (hit_point->attenuation.x < 0.99f) {
-              hit_point->attenuation = hit_point->attenuation;
-            }
             if (cos_theta_i > 1.0f || cos_theta_i <= 0.0f) {
               color = 0.0f;
             } else {
@@ -135,61 +164,46 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
           } else {
             // parse brdfs, use brdfs with hit_point's diffuse, specular
           }
-          hit_point->flux = (hit_point->flux + color * flux * (1.0f / M_PI)) *
-                            radius_reduction;
+          hit_point->flux = (hit_point->flux + color * flux) * radius_reduction;
         }
         hit_point->mutex.unlock();
       }
     }
-    Vector3 w = nl;
-    Vector3 u = ((w.x != 0.0f || w.y != 0.0f) ? Vector3(-w.y, w.x, 0.0f)
-                                              : Vector3(0.0f, 1.0f, 0.0f))
-                    .normalize();
-    Vector3 v = w.cross(u);
-    Vector3 d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s +
-                 w * std::sqrt(1.0f - r2))
-                    .normalize();
+    float probability;
+    Vector3 d;
+    sample_hemisphere(normal, d, probability);
     Vector3 base_color(0.0f);
     Vector3 w_i = -ray.d.normalize();
+    float cos_theta_i = std::max(0.0f, normal.dot(w_i));
     const Vector3& w_o = d;
 
     if (material.brdf_id == -1) {
-      float cos_theta_i = nl.dot(w_i);
       if (cos_theta_i > 1.0f || cos_theta_i <= 0.0f) {
         base_color = 0.0f;
       } else {
         float specular_cos_theta =
             std::max(0.0f, nl.dot((w_o + w_i).normalize()));
-        base_color = (material.diffuse + material.specular *
-                                             std::pow(specular_cos_theta,
-                                                      material.phong_exponent) /
-                                             cos_theta_i) *
-                     attenuation;
+        base_color = (material.diffuse +
+                      (material.specular *
+                       std::pow(specular_cos_theta, material.phong_exponent) /
+                       cos_theta_i));
       }
     } else {
       // parse brdfs, use brdfs with intersection's diffuse, specular
     }
-    float p = base_color.x > base_color.y && base_color.x > base_color.z
-                  ? base_color.x
-                  : base_color.y > base_color.z ? base_color.y : base_color.z;
-    // Be sure that hal cannot return negative
-    if (false && Light::hal(depth3 + 1, photon_id) < p) {
-      // Ray_type is not important for ppm, not checking it
+    float cos_theta_o = std::max(0.0f, normal.dot(w_o));
+    base_color *= cos_theta_o;
+    if (uniform_dist(generator) < probability) {
       photon_trace(Ray(intersection_point + (d * shadow_ray_epsilon), d), depth,
-                   base_color * (flux), attenuation, photon_id);
+                   (base_color * flux) / probability);
     }
   } else if (material.material_type == mt_mirror) {
     const Vector3 w_o = (ray.o - intersection_point).normalize();
     const Vector3 w_r = ((2.0f * normal.dot(w_o) * normal) - w_o).normalize();
     Ray mirror_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
-    photon_trace(mirror_ray, depth, material.mirror * flux,
-                 material.mirror * attenuation, photon_id);
+    photon_trace(mirror_ray, depth, material.mirror * flux);
 
   } else if (material.material_type == mt_refractive) {
-    // TODO: this calculation does not calculate attenuation with
-    // exp(log(transparency) * hit_data_t).
-    // uses only transparency while refracting ray, maybe we can convert it to
-    // our formula, AKCAY?
     const Vector3 nl = normal.dot(ray.d) < 0.0f ? normal : normal * -1;
     const Vector3 w_o = (ray.o - intersection_point).normalize();
     const Vector3 w_r = ((2.0f * normal.dot(w_o) * normal) - w_o).normalize();
@@ -201,7 +215,7 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
     float ddn = ray.d.dot(nl);
     float cos2t = 1 - nnt * nnt * (1 - ddn * ddn);
     if (cos2t < 0.0f) {
-      photon_trace(reflection_ray, depth, flux, attenuation, photon_id);
+      photon_trace(reflection_ray, depth, flux);
       return;
     }
     Vector3 refraction_direction =
@@ -219,11 +233,14 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
     Ray refraction_ray(
         intersection_point + (refraction_direction * shadow_ray_epsilon),
         refraction_direction);
-    Vector3 attenuated_color = material.transparency * attenuation;
-    if (Light::hal(depth3 - 1, photon_id) < P) {
-      photon_trace(reflection_ray, depth, flux, attenuated_color, photon_id);
+    if (into) {
+      if (uniform_dist(generator) < P) {
+        photon_trace(reflection_ray, depth, flux);
+      } else {
+        photon_trace(refraction_ray, depth, flux);
+      }
     } else {
-      photon_trace(refraction_ray, depth, flux, attenuated_color, photon_id);
+      photon_trace(refraction_ray, depth, flux);
     }
   }
 }
@@ -307,8 +324,8 @@ void Scene::eye_trace(const Ray& ray, int depth, const Vector3& attenuation,
     float ddn = ray.d.dot(nl);
     float cos2t = 1 - nnt * nnt * (1 - ddn * ddn);
     if (cos2t < 0.0f) {
-      eye_trace(reflection_ray, depth + 1, attenuation, pixel_index,
-                pixel_weight);
+      eye_trace(reflection_ray, depth + 1, material.transparency * attenuation,
+                pixel_index, pixel_weight);
       return;
     }
     Vector3 refraction_direction =
@@ -326,10 +343,15 @@ void Scene::eye_trace(const Ray& ray, int depth, const Vector3& attenuation,
         intersection_point + (refraction_direction * shadow_ray_epsilon),
         refraction_direction);
     Vector3 attenuated_color = material.transparency * attenuation;
-    eye_trace(reflection_ray, depth + 1, attenuated_color * fresnel,
-              pixel_index, pixel_weight);
-    eye_trace(refraction_ray, depth + 1, attenuated_color * (1.0 - fresnel),
-              pixel_index, pixel_weight);
+    if (into) {
+      eye_trace(reflection_ray, depth + 1, fresnel * attenuation, pixel_index,
+                pixel_weight);
+      eye_trace(refraction_ray, depth + 1, (1.0f - fresnel) * attenuated_color,
+                pixel_index, pixel_weight);
+    } else {
+      eye_trace(refraction_ray, depth + 1, attenuated_color, pixel_index,
+                pixel_weight);
+    }
   }
 }
 void Scene::density_estimation(Pixel* pixels, int total_num_of_photons) {

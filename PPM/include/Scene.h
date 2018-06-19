@@ -50,10 +50,11 @@ class Scene {
   void eye_trace_lines(int index, int starting_row, int height_increase);
   void eye_trace(const Ray& ray, int depth, const Vector3& attenuation,
                  unsigned int pixel_index, float pixel_weight = 1.0f);
-  void trace_n_photons(int base_photon_id, int n);
-  void photon_trace(const Ray& ray, int depth, const Vector3& flux,
-                    const Vector3& attenuation, int photon_id);
+  void trace_n_photons(int n, int iteration_count);
+  void photon_trace(const Ray& ray, int depth, const Vector3& flux);
   void density_estimation(Pixel* pixels, int total_num_of_photons);
+  void sample_hemisphere(const Vector3& w, Vector3& d, float& p,
+                         bool is_uniform_sampling = false);
   void add_hit_point(Hit_point* hit_point) {
     std::lock_guard<std::mutex> lock(mutex_);
     hit_points.push_back(hit_point);
