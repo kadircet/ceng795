@@ -115,6 +115,9 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
           if (hit_point->material.brdf_id == -1) {
             // all things except w_i should be used from hit_point
             float cos_theta_i = hit_point->normal.dot(w_i);
+            if (hit_point->attenuation.x < 0.99f) {
+              hit_point->attenuation = hit_point->attenuation;
+            }
             if (cos_theta_i > 1.0f || cos_theta_i <= 0.0f) {
               color = 0.0f;
             } else {
@@ -139,10 +142,8 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
       }
     }
     Vector3 w = nl;
-    Vector3 u = ((std::fabs(w.x) > 0.1f) ? Vector3(0.0f, 1.0f, 0.0f)
-                                         : Vector3(1.0f, 0.0f, 0.0f))
-                    .cross(w)
-
+    Vector3 u = ((w.x != 0.0f || w.y != 0.0f) ? Vector3(-w.y, w.x, 0.0f)
+                                              : Vector3(0.0f, 1.0f, 0.0f))
                     .normalize();
     Vector3 v = w.cross(u);
     Vector3 d = (u * std::cos(r1) * r2s + v * std::sin(r1) * r2s +
@@ -172,10 +173,10 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux,
                   ? base_color.x
                   : base_color.y > base_color.z ? base_color.y : base_color.z;
     // Be sure that hal cannot return negative
-    if (depth < max_recursion_depth && Light::hal(depth3 + 1, photon_id) < p) {
+    if (false && Light::hal(depth3 + 1, photon_id) < p) {
       // Ray_type is not important for ppm, not checking it
       photon_trace(Ray(intersection_point + (d * shadow_ray_epsilon), d), depth,
-                   base_color * (flux) * (1.0f / p), attenuation, photon_id);
+                   base_color * (flux), attenuation, photon_id);
     }
   } else if (material.material_type == mt_mirror) {
     const Vector3 w_o = (ray.o - intersection_point).normalize();

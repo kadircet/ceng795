@@ -7,7 +7,12 @@
 #include "lodepng.h"
 #include "timeutil.h"
 #include "tinyexr.h"
+#ifdef NDEBUG
 #define THREAD_MULTIPLIER 1
+#else
+#define THREAD_MULTIPLIER 0
+#endif
+
 void write_png(const std::vector<Vector3>& pixel_colors,
                const std::string& file_name, int width, int height);
 void write_exr(const std::vector<Vector3>& hdr_image,
@@ -148,6 +153,14 @@ int main(int argc, char* argv[]) {
       }
       write_png(tonemapped_colors, filename, width, height);
     } else {
+      for (int i = 0; i < width * height; i++) {
+        pixel_colors[i].x =
+            int(pow(1 - exp(-pixel_colors[i].x), 1 / 2.2f) * 255 + 0.5f);
+        pixel_colors[i].y =
+            int(pow(1 - exp(-pixel_colors[i].y), 1 / 2.2f) * 255 + 0.5f);
+        pixel_colors[i].z =
+            int(pow(1 - exp(-pixel_colors[i].z), 1 / 2.2f) * 255 + 0.5f);
+      }
       write_png(pixel_colors, filename, width, height);
     }
   }
