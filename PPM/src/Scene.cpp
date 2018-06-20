@@ -209,7 +209,10 @@ void Scene::photon_trace(const Ray& ray, int depth, const Vector3& flux) {
     const Vector3 w_r = ((2.0f * normal.dot(w_o) * normal) - w_o).normalize();
     Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
     bool into = (normal.dot(nl) > 0.0f);
-    constexpr float air_index = 1.0f;
+    float air_index = 1.0f;
+    // if (material.refraction_index == 2.0f) {
+    //  air_index = 1.33;
+    //}
     float nnt = into ? air_index / material.refraction_index
                      : material.refraction_index / air_index;
     float ddn = ray.d.dot(nl);
@@ -318,7 +321,10 @@ void Scene::eye_trace(const Ray& ray, int depth, const Vector3& attenuation,
     const Vector3 w_r = ((2.0f * normal.dot(w_o) * normal) - w_o).normalize();
     Ray reflection_ray(intersection_point + (w_r * shadow_ray_epsilon), w_r);
     bool into = (normal.dot(nl) > 0.0f);
-    constexpr float air_index = 1.0f;
+    float air_index = 1.0f;
+    // if (material.refraction_index == 2.0f) {
+    //  air_index = 1.33;
+    //}
     float nnt = into ? air_index / material.refraction_index
                      : material.refraction_index / air_index;
     float ddn = ray.d.dot(nl);
