@@ -97,6 +97,7 @@ int main(int argc, char* argv[]) {
     std::cout << filename << "(" << width << "x" << height << ") is saved in: ";
     print_time_diff(std::cout, start, end);
     std::cout << std::endl;
+	delete[] pixels;
   }
   return 0;
 }
