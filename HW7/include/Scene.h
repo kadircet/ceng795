@@ -84,9 +84,9 @@ class Scene {
                          int texture_offset, int material_id, int texture_id,
                          Triangle_shading_mode tsm);
   //
-  void parse_binary_vertexdata(std::string& filename);
-  void parse_binary_texturedata(std::string& filename);
-  void parse_binary_facedata(std::string& filename,
+  void parse_binary_vertexdata(const std::string& filename);
+  void parse_binary_texturedata(const std::string& filename);
+  void parse_binary_facedata(const std::string& filename,
                              std::vector<Shape*>& mesh_triangles,
                              int vertex_offset, int texture_offset,
                              int material_id, int texture_id,

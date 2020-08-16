@@ -1836,7 +1836,7 @@ void Scene::parse_ply_tinyply(std::string filename,
   }
 }
 
-void Scene::parse_binary_vertexdata(std::string& filename) {
+void Scene::parse_binary_vertexdata(const std::string& filename) {
   FILE* fd = fopen(filename.c_str(), "rb");
   int N;
   fread(&N, sizeof(int), 1, fd);
@@ -1850,7 +1850,7 @@ void Scene::parse_binary_vertexdata(std::string& filename) {
   fclose(fd);
 }
 
-void Scene::parse_binary_texturedata(std::string& filename) {
+void Scene::parse_binary_texturedata(const std::string& filename) {
   FILE* fd = fopen(filename.c_str(), "rb");
   int N;
   fread(&N, sizeof(int), 1, fd);
@@ -1863,7 +1863,7 @@ void Scene::parse_binary_texturedata(std::string& filename) {
   fclose(fd);
 }
 
-void Scene::parse_binary_facedata(std::string& filename,
+void Scene::parse_binary_facedata(const std::string& filename,
                                   std::vector<Shape*>& mesh_triangles,
                                   int vertex_offset, int texture_offset,
                                   int material_id, int texture_id,
