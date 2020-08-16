@@ -16,4 +16,7 @@ include_directories("include")
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE HEADERS "include/*.h")
 add_executable(raytracer ${SOURCES} ${HEADERS})
-target_link_libraries( raytracer ${OpenCV_LIBS} )
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries( raytracer ${OpenCV_LIBS} Threads::Threads)
