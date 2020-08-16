@@ -19,4 +19,4 @@ add_executable(raytracer ${SOURCES} ${HEADERS})
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-target_link_libraries( raytracer ${OpenCV_LIBS} Threads::Threads)
+target_link_libraries( raytracer Threads::Threads)
