@@ -1,4 +1,6 @@
 #include "Light_sphere.h"
+
+#include <cmath>
 #include <random>
 Vector3 Light_sphere::direction_and_distance(const Vector3& from_point,
                                              const Vector3& normal,
@@ -47,7 +49,7 @@ Vector3 Light_sphere::direction_and_distance(const Vector3& from_point,
   //}
   distance = light_hit_data.t;
   probability = 1 / (2 * M_PI * (1 - cos_theta_max));
-  if (isnan(probability)) {
+  if (std::isnan(probability)) {
     std::cout << "wtf nan" << std::endl;
   }
   return l_in_world_space;
